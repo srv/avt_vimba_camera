@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>avt_vimba_ros</name>
+  <name>avt_vimba_camera</name>
   <version>0.0.1</version>
-  <description>This package is a wrapper of the Allied Vision Technologies (AVT) VIMBA GigEth and Firewire SDK.</description>
+  <description>This package is a wrapper of the Allied Vision Technologies (AVT) VIMBA Ethernet and Firewire SDK.</description>
 
   <maintainer email="miquel.massot@uib.cat">Miquel Massot</maintainer>
 

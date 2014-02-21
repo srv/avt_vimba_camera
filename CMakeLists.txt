@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(avt_vimba_ros)
+project(avt_vimba_camera)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -239,9 +239,9 @@ target_link_libraries(vimba_ros
   ${catkin_LIBRARIES}
 )
 
-add_executable(avt_vimba_ros_node src/avt_vimba_ros_node.cpp)
+add_executable(avt_vimba_camera_node src/avt_vimba_camera_node.cpp)
 
-target_link_libraries(avt_vimba_ros_node
+target_link_libraries(avt_vimba_camera_node
   vimba_ros
   ${catkin_LIBRARIES}
 )
