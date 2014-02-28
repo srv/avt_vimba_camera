@@ -8,7 +8,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle nhp("~");
 
-  avt_vimba_ros::VimbaROS vimba_ros(nh,nhp);
+  avt_vimba_camera::VimbaROS vimba_ros(nh,nhp);
 
   ros::spin();
   return 0;

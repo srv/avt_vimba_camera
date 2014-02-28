@@ -204,6 +204,11 @@ message(STATUS "[avt_vimba_sdk]: ${VIMBACPP}")
 #   sensor_msgs#   std_msgs
 # )
 
+#add dynamic reconfigure api
+generate_dynamic_reconfigure_options(
+  cfg/AvtVimbaCamera.cfg
+)
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -231,18 +236,14 @@ include_directories(
   ${catkin_INCLUDE_DIRS} include
 )
 
-add_library(vimba_ros
-  src/vimba_ros.cpp
-)
-target_link_libraries(vimba_ros
-  ${VIMBACPP}
-  ${catkin_LIBRARIES}
-)
+add_executable(avt_vimba_camera_node 
+src/avt_vimba_camera_node.cpp 
+src/vimba_ros.cpp)
 
-add_executable(avt_vimba_camera_node src/avt_vimba_camera_node.cpp)
+add_dependencies(avt_vimba_camera_node ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(avt_vimba_camera_node
-  vimba_ros
+  ${VIMBACPP}
   ${catkin_LIBRARIES}
 )
 
