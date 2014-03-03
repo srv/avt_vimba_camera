@@ -32,6 +32,11 @@
 
 #include <avt_vimba_camera/frame_observer.h>
 
+FrameObserver::FrameObserver(CameraPtr cam_ptr, Callback callback) : IFrameObserver( cam_ptr ), callback_(callback), cam_ptr_(cam_ptr)
+{
+  // Nothing
+}
+
 void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
 {
   VmbFrameStatusType eReceiveStatus;
@@ -50,7 +55,7 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
   else
   {
     // If any error occurred we queue the frame without notification
-    vimba_camera_ptr_->QueueFrame( vimba_frame_ptr );
+    cam_ptr_->QueueFrame( vimba_frame_ptr );
   }
 }
 

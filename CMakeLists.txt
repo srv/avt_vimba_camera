@@ -236,9 +236,10 @@ include_directories(
   ${catkin_INCLUDE_DIRS} include
 )
 
-add_executable(avt_vimba_camera_node 
-src/avt_vimba_camera_node.cpp 
-src/vimba_ros.cpp)
+add_executable(avt_vimba_camera_node
+src/avt_vimba_camera_node.cpp
+src/vimba_ros.cpp
+src/frame_observer.cpp)
 
 add_dependencies(avt_vimba_camera_node ${PROJECT_NAME}_gencfg)
 

@@ -34,7 +34,8 @@
 #define FRAME_OBSERVER_H
 
 #include <queue>
-#include <boost/signals2/mutex.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/function.hpp>
 
 #include <VimbaCPP/Include/VimbaCPP.h>
 
@@ -47,7 +48,10 @@ class FrameObserver : virtual public IFrameObserver
     typedef boost::function<void (const FramePtr vimba_frame_ptr)> Callback;
 
     // We pass the camera that will deliver the frames to the constructor
-    FrameObserver( CameraPtr cam_ptr, Callback callback) : IFrameObserver( cam_ptr ), callback_(callback) {;}
+    FrameObserver( CameraPtr cam_ptr, Callback callback);
+
+    // Destructor
+    ~FrameObserver(){};
 
     // This is our callback routine that will be executed on every received frame
     virtual void FrameReceived( const FramePtr vimba_frame_ptr );
@@ -61,6 +65,7 @@ class FrameObserver : virtual public IFrameObserver
   private:
     // Frame observer stores all FramePtr
     std::queue<FramePtr> vimba_frames;
+    CameraPtr cam_ptr_;
     boost::mutex mutex;
     Callback callback_;
 };

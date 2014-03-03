@@ -50,6 +50,8 @@
 
 using AVT::VmbAPI::VimbaSystem;
 using AVT::VmbAPI::CameraPtr;
+using AVT::VmbAPI::FramePtr;
+using AVT::VmbAPI::IFrameObserverPtr;
 
 namespace avt_vimba_camera {
 
@@ -90,7 +92,6 @@ enum AutoSettingMode {
   Auto
 };
 
-
 class VimbaROS {
   public:
     VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp);
@@ -114,6 +115,9 @@ class VimbaROS {
     // Subscriber for input trigger time
     ros::Subscriber trigger_sub_;
 
+    // ROS params
+    int num_frames_;
+
     // ROS messages
     sensor_msgs::Image img_;
     sensor_msgs::CameraInfo cam_info_;
@@ -135,6 +139,8 @@ class VimbaROS {
     FrameObserver* vimba_frame_observer_ptr_;
     // IFrame Observer
     CameraPtr vimba_camera_ptr_;
+    // Current frame
+    FramePtr vimba_frame_ptr_;
     // The current pixel format
     VmbInt64_t vimba_pixel_format_;
     // The current width
@@ -196,6 +202,8 @@ class VimbaROS {
     void initApi(void);
     // Translates Vimba error codes to readable error messages
     std::string errorCodeToMessage(VmbErrorType eErr);
+    // Translates Vimba access mode codes to readable messages
+    std::string accessModeToString(VmbAccessModeType modeType);
     // Parser of Vimba Interface Type
     std::string interfaceToString(VmbInterfaceType interfaceType);
     // Open the required camera

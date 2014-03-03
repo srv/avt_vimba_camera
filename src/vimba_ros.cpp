@@ -32,6 +32,7 @@
 
 #include <avt_vimba_camera/vimba_ros.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/fill_image.h>
 
 namespace avt_vimba_camera {
 
@@ -70,13 +71,16 @@ VimbaROS::VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp)
   initApi();
 
   std::string guid_str, ip_str;
-  int num_frames_;
   nhp_.getParam("guid", guid_str);
   nhp_.getParam("ip_address", ip_str);
-  nhp_.getParam("num_frames",num_frames_);
+  nhp_.getParam("num_frames", num_frames_);
+
+  //ip_str = "IP:169.254.8.63";
+  guid_str = "50-0503328910";
 
   // Determine which camera to use. Try IP first
   if (!ip_str.empty()) {
+    ROS_INFO_STREAM("Trying to open camera by IP: " << ip_str);
     vimba_camera_ptr_ = openCamera(ip_str);
     // If both guid and IP are available, open by IP and check guid
     if (!guid_str.empty()) {
@@ -86,6 +90,7 @@ VimbaROS::VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp)
     }
   } else if (!guid_str.empty()) {
     // Only guid available
+    ROS_INFO_STREAM("Trying to open camera by ID: " << guid_str);
     vimba_camera_ptr_ = openCamera(guid_str);
   }
 
@@ -109,11 +114,11 @@ void VimbaROS::start() {
     {
       // Create a frame observer for this camera
       vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
-                                                    &VimbaROS::frameCallback);
+                      boost::bind(&VimbaROS::frameCallback, this, _1));
       // Start streaming
       VmbErrorType err =
         vimba_camera_ptr_->StartContinuousImageAcquisition(num_frames_,
-                                             vimba_frame_observer_ptr_);
+                                  IFrameObserverPtr(vimba_frame_observer_ptr_));
       // setup the image publisher
       streaming_pub_ = it_.advertiseCamera("image_raw", 1);
       break;
@@ -147,21 +152,33 @@ void VimbaROS::start() {
 void VimbaROS::stop() {
   if (!running_) return;
 
-  vimba_camera_ptr_->close();  // Must stop camera before streaming_pub_.
-  poll_srv_.shutdown();
-  trigger_sub_.shutdown();
+  vimba_camera_ptr_->Close();  // Must stop camera before streaming_pub_.
+  //poll_srv_.shutdown();
+  //trigger_sub_.shutdown();
   streaming_pub_.shutdown();
 
   running_ = false;
 }
 
-bool VimbaROS::setCameraInfo(const sensor_msgs::SetCameraInfo::Request& req,
-                             const sensor_msgs::SetCameraInfo::Response& rsp) {
+bool VimbaROS::setCameraInfo(sensor_msgs::SetCameraInfo::Request& req,
+                             sensor_msgs::SetCameraInfo::Response& rsp) {
   ROS_INFO("New camera info received");
-  sensor_msgs::CameraInfo &info = req.camera_info;
 
   // Sanity check:
   // the image dimensions should match the max resolution of the sensor.
+  sensor_msgs::CameraInfo &info = req.camera_info;
+  VmbUint32_t height,width;
+  vimba_frame_ptr_->GetHeight(height);
+  vimba_frame_ptr_->GetWidth(width);
+  if (info.width != width || info.height != height) {
+    rsp.success = false;
+    rsp.status_message = (boost::format("Camera_info resolution %ix%i does not "
+                                        "match current setting, camera running "
+                                        "at resolution %ix%i.") % info.width 
+                                                                % info.height % width % height).str();
+    ROS_ERROR("%s", rsp.status_message.c_str());
+    return true;
+  }
 
   // TODO(m)
 
@@ -169,28 +186,28 @@ bool VimbaROS::setCameraInfo(const sensor_msgs::SetCameraInfo::Request& req,
 }
 
 void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
+
   sensor_msgs::Image img;
 
+  vimba_frame_ptr_ = vimba_frame_ptr;
+
   /// @todo Better trigger timestamp matching
-  if ( trigger_mode_ == SyncIn1  && !trig_time_.isZero() ) {
-    img.header.stamp = cam_info.header.stamp = trig_time_;
-    trig_time_ = ros::Time();  // Zero
-  } else {
-    /// @todo Match time stamp from frame to ROS time?
-    img.header.stamp = cam_info.header.stamp = ros::Time::now();
-    VmbUint64_t timestamp = vimba_frame_ptr->GetTimeStamp();
-    ROS_INFO_STREAM("Timestamp of camera: " << timestamp);
-  }
+  // if ( trigger_mode_ == SyncIn1  && !trig_time_.isZero() ) {
+
+  img.header.stamp = cam_info_.header.stamp = ros::Time::now();
+  VmbUint64_t timestamp;
+  vimba_frame_ptr->GetTimestamp(timestamp);
+  ROS_INFO_STREAM("Timestamp of camera: " << timestamp);
 
   // Set the operational parameters in CameraInfo (binning, ROI)
-  cam_info.binning_x =
-  cam_info.binning_y =
+  cam_info_.binning_x = camera_config_.binning_x;
+  cam_info_.binning_y = camera_config_.binning_y;
   // ROI in CameraInfo is in unbinned coordinates, need to scale up
-  cam_info.roi.x_offset =  vimba_frame_ptr->GetOffsetX();
-  cam_info.roi.y_offset = vimba_frame_ptr->GetOffsetY();
-  cam_info.roi.height = vimba_frame_ptr->GetHeight();
-  cam_info.roi.width = vimba_frame_ptr->GetWidth();
-  cam_info.roi.do_rectify =
+  vimba_frame_ptr->GetOffsetX(cam_info_.roi.x_offset);
+  vimba_frame_ptr->GetOffsetY(cam_info_.roi.y_offset);
+  vimba_frame_ptr->GetHeight(cam_info_.roi.height);
+  vimba_frame_ptr->GetWidth(cam_info_.roi.width);
+  cam_info_.roi.do_rectify = false;  // TODO(m)
 
   if (frameToImage(vimba_frame_ptr, img))
     streaming_pub_.publish(img_, cam_info_);
@@ -198,86 +215,59 @@ void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
 
 bool VimbaROS::frameToImage(const FramePtr vimba_frame_ptr,
                             sensor_msgs::Image& image) {
-  VmbPixelFormatType pixel_format = vimba_frame_ptr->GetPixelFormat();
-  VmbUint32_t width = vimba_frame_ptr->GetWidth();
-  VmbUint32_t height vimba_frame_ptr->GetHeight();
+  VmbPixelFormatType pixel_format;
+  VmbUint32_t width, height;
+
+  vimba_frame_ptr->GetPixelFormat(pixel_format);
+  vimba_frame_ptr->GetWidth(width);
+  vimba_frame_ptr->GetHeight(height);
 
   // NOTE: YUV and ARGB formats not supported
   std::string encoding;
-  if      (pixel_format == VmbPixelFormatMono8          )
-    encoding = sensor_msgs::image_encodings::MONO8;
-  else if (pixel_format == VmbPixelFormatMono10         )
-    encoding = sensor_msgs::image_encodings::MONO16;
-  else if (pixel_format == VmbPixelFormatMono12         )
-    encoding = sensor_msgs::image_encodings::MONO16;
-  else if (pixel_format == VmbPixelFormatMono12Packed   )
-    encoding = sensor_msgs::image_encodings::MONO16;
-  else if (pixel_format == VmbPixelFormatMono14         )
-    encoding = sensor_msgs::image_encodings::MONO16;
-  else if (pixel_format == VmbPixelFormatMono16         )
-    encoding = sensor_msgs::image_encodings::MONO16;
-  else if (pixel_format == VmbPixelFormatBayerGR8       )
-    encoding = sensor_msgs::image_encodings::BAYER_GRBG8;
-  else if (pixel_format == VmbPixelFormatBayerRG8       )
-    encoding = sensor_msgs::image_encodings::BAYER_RGGB8;
-  else if (pixel_format == VmbPixelFormatBayerGB8       )
-    encoding = sensor_msgs::image_encodings::BAYER_GBRG8;
-  else if (pixel_format == VmbPixelFormatBayerBG8       )
-    encoding = sensor_msgs::image_encodings::BAYER_BGGR8;
-  else if (pixel_format == VmbPixelFormatBayerGR10      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerRG10      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerGB10      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerBG10      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerGR12      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerRG12      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerGB12      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerBG12      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerGR12Packed)
-    encoding = sensor_msgs::image_encodings::TYPE_32SC4;
-  else if (pixel_format == VmbPixelFormatBayerRG12Packed)
-    encoding = sensor_msgs::image_encodings::TYPE_32SC4;
-  else if (pixel_format == VmbPixelFormatBayerGB12Packed)
-    encoding = sensor_msgs::image_encodings::TYPE_32SC4;
-  else if (pixel_format == VmbPixelFormatBayerBG12Packed)
-    encoding = sensor_msgs::image_encodings::TYPE_32SC4;
-  else if (pixel_format == VmbPixelFormatBayerGR16      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerRG16      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerGB16      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatBayerBG16      )
-    encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-  else if (pixel_format == VmbPixelFormatRgb8           )
-    encoding = sensor_msgs::image_encodings::RGB8;
-  else if (pixel_format == VmbPixelFormatBgr8           )
-    encoding = sensor_msgs::image_encodings::BGR8;
-  else if (pixel_format == VmbPixelFormatRgba8          )
-    encoding = sensor_msgs::image_encodings::RGBA8;
-  else if (pixel_format == VmbPixelFormatBgra8          )
-    encoding = sensor_msgs::image_encodings::BGRA8;
-  else if (pixel_format == VmbPixelFormatRgb12          )
-    encoding = sensor_msgs::image_encodings::TYPE_16UC3;
-  else if (pixel_format == VmbPixelFormatRgb16          )
-    encoding = sensor_msgs::image_encodings::TYPE_16UC3;
+  if      (pixel_format == VmbPixelFormatMono8          ) encoding = sensor_msgs::image_encodings::MONO8;
+  else if (pixel_format == VmbPixelFormatMono10         ) encoding = sensor_msgs::image_encodings::MONO16;
+  else if (pixel_format == VmbPixelFormatMono12         ) encoding = sensor_msgs::image_encodings::MONO16;
+  else if (pixel_format == VmbPixelFormatMono12Packed   ) encoding = sensor_msgs::image_encodings::MONO16;
+  else if (pixel_format == VmbPixelFormatMono14         ) encoding = sensor_msgs::image_encodings::MONO16;
+  else if (pixel_format == VmbPixelFormatMono16         ) encoding = sensor_msgs::image_encodings::MONO16;
+  else if (pixel_format == VmbPixelFormatBayerGR8       ) encoding = sensor_msgs::image_encodings::BAYER_GRBG8;
+  else if (pixel_format == VmbPixelFormatBayerRG8       ) encoding = sensor_msgs::image_encodings::BAYER_RGGB8;
+  else if (pixel_format == VmbPixelFormatBayerGB8       ) encoding = sensor_msgs::image_encodings::BAYER_GBRG8;
+  else if (pixel_format == VmbPixelFormatBayerBG8       ) encoding = sensor_msgs::image_encodings::BAYER_BGGR8;
+  else if (pixel_format == VmbPixelFormatBayerGR10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerRG10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerGB10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerBG10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerGR12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerRG12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerGB12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerBG12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerGR12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+  else if (pixel_format == VmbPixelFormatBayerRG12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+  else if (pixel_format == VmbPixelFormatBayerGB12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+  else if (pixel_format == VmbPixelFormatBayerBG12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+  else if (pixel_format == VmbPixelFormatBayerGR16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerRG16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerGB16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatBayerBG16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+  else if (pixel_format == VmbPixelFormatRgb8           ) encoding = sensor_msgs::image_encodings::RGB8;
+  else if (pixel_format == VmbPixelFormatBgr8           ) encoding = sensor_msgs::image_encodings::BGR8;
+  else if (pixel_format == VmbPixelFormatRgba8          ) encoding = sensor_msgs::image_encodings::RGBA8;
+  else if (pixel_format == VmbPixelFormatBgra8          ) encoding = sensor_msgs::image_encodings::BGRA8;
+  else if (pixel_format == VmbPixelFormatRgb12          ) encoding = sensor_msgs::image_encodings::TYPE_16UC3;
+  else if (pixel_format == VmbPixelFormatRgb16          ) encoding = sensor_msgs::image_encodings::TYPE_16UC3;
   else
     ROS_WARN("Received frame with unsupported pixel format %d", pixel_format);
 
   if (encoding == "") return false;
 
-  VmbUint32_t step = vimba_frame_ptr->GetImageSize() / height;
+  VmbUint32_t nSize;
+  vimba_frame_ptr->GetImageSize(nSize);
+  VmbUint32_t step = nSize / height;
 
   VmbUchar_t *buffer_ptr;
   VmbErrorType err = vimba_frame_ptr->GetImage(buffer_ptr);
-  res = false;
+  bool res = false;
   if ( VmbErrorSuccess == err ) {
     res = sensor_msgs::fillImage(image,
                                  encoding,
@@ -317,7 +307,7 @@ void VimbaROS::configure(const Config& config, uint32_t level) {
     updateBandwidthConfig(config, feature_ptr_vec);
     updatePixelFormatConfig(config, feature_ptr_vec);
   } catch(const std::exception& e) {
-    ROS_ERROR_STREAM("Error reconfiguring motor board node : " << e.what());
+    ROS_ERROR_STREAM("Error reconfiguring avt_vimba_camera node : " << e.what());
   }
 }
 
@@ -333,7 +323,7 @@ void VimbaROS::updateTriggerConfig(const Config& config,
   }
   if (config.acquisition_rate != camera_config_.acquisition_rate) {
     setFeatureValue("AcquisitionFrameRateAbs",
-                    static_cast<float>config.acquisition_rate);
+                    static_cast<float>(config.acquisition_rate));
   }
 }
 
@@ -345,14 +335,14 @@ void VimbaROS::updateExposureConfig(const Config& config,
   }
   if (config.exposure_auto_max != camera_config_.exposure_auto_max) {
     setFeatureValue("ExposureAutoMax",
-                    static_cast<int>config.exposure_auto_max);
+                    static_cast<int>(config.exposure_auto_max));
   }
   if (config.exposure_auto_target != camera_config_.exposure_auto_target) {
     setFeatureValue("ExposureAutoTarget",
-                    static_cast<int>config.exposure_auto_target);
+                    static_cast<int>(config.exposure_auto_target));
   }
   if (config.exposure != camera_config_.exposure) {
-    setFeatureValue("ExposureTimeAbs", static_cast<float>config.exposure);
+    setFeatureValue("ExposureTimeAbs", static_cast<float>(config.exposure));
   }
 }
 
@@ -363,13 +353,13 @@ void VimbaROS::updateGainConfig(const Config& config,
     setFeatureValue("GainAuto", AutoMode[config.auto_gain]);
   }
   if (config.gain_auto_max != camera_config_.gain_auto_max) {
-    setFeatureValue("GainAutoMax", static_cast<float>config.gain_auto_max);
+    setFeatureValue("GainAutoMax", static_cast<float>(config.gain_auto_max));
   }
   if (config.gain_auto_target != camera_config_.gain_auto_target) {
-    setFeatureValue("GainAutoTarget", static_cast<int>config.gain_auto_target);
+    setFeatureValue("GainAutoTarget", static_cast<int>(config.gain_auto_target));
   }
   if (config.gain != camera_config_.gain) {
-    setFeatureValue("Gain", static_cast<float>config.gain);
+    setFeatureValue("Gain", static_cast<float>(config.gain));
   }
 }
 
@@ -386,7 +376,7 @@ void VimbaROS::updateWhiteBalanceConfig(const Config& config,
   }
   if (config.balance_ratio_abs != camera_config_.balance_ratio_abs) {
     setFeatureValue("BalanceRatioAbs",
-                    static_cast<int>config.balance_ratio_abs);
+                    static_cast<int>(config.balance_ratio_abs));
   }
 }
 
@@ -395,16 +385,16 @@ void VimbaROS::updateImageModeConfig(const Config& config,
                                      FeaturePtrVector feature_ptr_vec) {
   if (config.decimation_x != camera_config_.decimation_x) {
     setFeatureValue("DecimationHorizontal",
-                    static_cast<int>config.decimation_x);
+                    static_cast<int>(config.decimation_x));
   }
   if (config.decimation_y != camera_config_.decimation_y) {
-    setFeatureValue("DecimationVertical", static_cast<int>config.decimation_y);
+    setFeatureValue("DecimationVertical", static_cast<int>(config.decimation_y));
   }
   if (config.binning_x != camera_config_.binning_x) {
-    setFeatureValue("BinningHorizontal", static_cast<int>config.binning_x);
+    setFeatureValue("BinningHorizontal", static_cast<int>(config.binning_x));
   }
   if (config.binning_y != camera_config_.binning_y) {
-    setFeatureValue("BinningVertical", static_cast<int>config.binning_y);
+    setFeatureValue("BinningVertical", static_cast<int>(config.binning_y));
   }
 }
 
@@ -412,16 +402,16 @@ void VimbaROS::updateImageModeConfig(const Config& config,
 void VimbaROS::updateROIConfig(const Config& config,
                                FeaturePtrVector feature_ptr_vec) {
   if (config.x_offset != camera_config_.x_offset) {
-    setFeatureValue("OffsetX", static_cast<int>config.x_offset);
+    setFeatureValue("OffsetX", static_cast<int>(config.x_offset));
   }
   if (config.y_offset != camera_config_.y_offset) {
-    setFeatureValue("OffsetX", static_cast<int>config.y_offset);
+    setFeatureValue("OffsetX", static_cast<int>(config.y_offset));
   }
   if (config.width != camera_config_.width) {
-    setFeatureValue("Width", static_cast<int>config.width);
+    setFeatureValue("Width", static_cast<int>(config.width));
   }
   if (config.height != camera_config_.height) {
-    setFeatureValue("Height", static_cast<int>config.height);
+    setFeatureValue("Height", static_cast<int>(config.height));
   }
 }
 
@@ -435,7 +425,7 @@ void VimbaROS::updateBandwidthConfig(const Config& config,
   if (config.stream_bytes_per_second
       != camera_config_.stream_bytes_per_second) {
     setFeatureValue("StreamBytesPerSecond",
-                    static_cast<int>config.stream_bytes_per_second);
+                    static_cast<int>(config.stream_bytes_per_second));
   }
 }
 
@@ -488,7 +478,8 @@ bool VimbaROS::setFeatureValue(std::string feature_str, T val) {
                        << " is not readable.");
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str);
+    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str
+      << "\n Error: " << errorCodeToMessage(err));
   }
   return (VmbErrorSuccess == err);
 }
@@ -510,11 +501,11 @@ std::string VimbaROS::errorCodeToMessage(VmbErrorType error) {
 }
 
 int VimbaROS::getWidth() {
-  return static_cast<int>vimba_width_;
+  return static_cast<int>(vimba_width_);
 }
 
 int VimbaROS::getHeight() {
-  return static_cast<int>vimba_height_;
+  return static_cast<int>(vimba_height_);
 }
 
 VmbPixelFormatType VimbaROS::getPixelFormat() {
@@ -531,8 +522,47 @@ void VimbaROS::listAvailableCameras(void) {
       cameras.end() != iter;
       ++iter) {
         if (VmbErrorSuccess == (*iter)->GetName(name)) {
-          ROS_INFO_STREAM("[AVT_Vimba_ROS]: Found camera: " << name);
+          ROS_INFO_STREAM("[AVT_Vimba_ROS]: Found camera: ");
         }
+        std::string strID;            // The ID of the cam
+        std::string strName;          // The name of the cam
+        std::string strModelname;     // The model name of the cam
+        std::string strSerialNumber;  // The serial number of the cam
+        std::string strInterfaceID;  // The ID of the interface the cam is connected to
+        VmbErrorType err = (*iter)->GetID( strID );
+        if ( VmbErrorSuccess != err )
+        {
+            ROS_ERROR_STREAM("[Could not get camera ID. Error code: " << err << "]");
+        }
+        err = (*iter)->GetName( strName );
+        if ( VmbErrorSuccess != err )
+        {
+            ROS_ERROR_STREAM("[Could not get camera name. Error code: " << err << "]");
+        }
+
+        err = (*iter)->GetModel( strModelname );
+        if ( VmbErrorSuccess != err )
+        {
+            ROS_ERROR_STREAM("[Could not get camera mode name. Error code: " << err << "]");
+        }
+
+        err = (*iter)->GetSerialNumber( strSerialNumber );
+        if ( VmbErrorSuccess != err )
+        {
+            ROS_ERROR_STREAM("[Could not get camera serial number. Error code: " << err << "]");
+        }
+
+        err = (*iter)->GetInterfaceID( strInterfaceID );
+        if ( VmbErrorSuccess != err )
+        {
+            ROS_ERROR_STREAM("[Could not get interface ID. Error code: " << err << "]");
+        }
+        ROS_INFO_STREAM("\t\t/// Camera Name: " << strName);
+        ROS_INFO_STREAM("\t\t/// Model Name: " << strModelname);
+        ROS_INFO_STREAM("\t\t/// Camera ID: " << strID);
+        ROS_INFO_STREAM("\t\t/// Serial Number: " << strSerialNumber);
+        ROS_INFO_STREAM("\t\t/// @ Interface ID: " << strInterfaceID);
+
       }
     }
   }
@@ -550,6 +580,18 @@ std::string VimbaROS::interfaceToString(VmbInterfaceType interfaceType) {
   }
 }
 
+std::string VimbaROS::accessModeToString(VmbAccessModeType modeType){
+  std::string s;
+  switch (modeType){
+    case VmbAccessModeNone:   s = std::string("No access");
+    case VmbAccessModeFull:   s = std::string("Read and write access");
+    case VmbAccessModeRead:   s = std::string("Only read access");
+    case VmbAccessModeConfig: s = std::string("Device configuration access");
+    case VmbAccessModeLite:   s = std::string("Device read/write access without feature access (only addresses)");
+  }
+  return s;
+}
+
 CameraPtr VimbaROS::openCamera(std::string id_str) {
   // Details:   The ID might be one of the following:
   //            "IP:169.254.12.13",
@@ -557,10 +599,8 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
   //            or a plain serial number: "1234567890".
 
   CameraPtr camera;
-
-  if (VmbErrorSuccess == vimba_system_.OpenCameraByID(id_str.c_str(),
-                                                      VmbAccessModeFull,
-                                                      camera)) {
+  VmbErrorType err = vimba_system_.GetCameraByID(id_str.c_str(), camera);
+  if (VmbErrorSuccess == err) {
     std::string cam_id, cam_name, cam_model, cam_sn, cam_int, cam_int_type_str;
     VmbInterfaceType cam_int_type;
     camera->GetID(cam_id);
@@ -578,7 +618,20 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
     << "\n\t\t * S/N:       " << cam_sn
     << "\n\t\t * Itf. ID:   " << cam_int
     << "\n\t\t * Itf. Type: " << cam_int_type_str);
-    printAllCameraFeatures(camera);
+
+    VmbAccessModeType accessMode = VmbAccessModeNone;
+    err = camera->GetPermittedAccess(accessMode);
+    ROS_INFO_STREAM("Access permitted: " << accessModeToString(accessMode));
+    err = camera->Open(VmbAccessModeFull);
+    if (VmbErrorSuccess == err){
+      printAllCameraFeatures(camera);
+    } else {
+      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
+        << "\n Error: " << errorCodeToMessage(err));
+    }
+  } else {
+    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
+      << "\n Error: " << errorCodeToMessage(err));
   }
   return camera;
 }
