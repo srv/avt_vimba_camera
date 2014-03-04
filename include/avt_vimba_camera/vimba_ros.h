@@ -97,7 +97,8 @@ class VimbaROS {
     VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp);
     int getWidth();
     int getHeight();
-    VmbPixelFormatType getPixelFormat();
+    int getMaxWidth();
+    int getMaxHeight();
 
   private:
     // true if camera is started
@@ -117,6 +118,9 @@ class VimbaROS {
 
     // ROS params
     int num_frames_;
+    std::string frame_id_;
+    std::string trigger_mode_;
+    int trigger_mode_int_;
 
     // ROS messages
     sensor_msgs::Image img_;
@@ -129,9 +133,7 @@ class VimbaROS {
 
     // Camera configuration
     Config camera_config_;
-    FrameStartTriggerMode trigger_mode_;
     AcquisitionMode acquisition_mode_;
-    PixelFormatMode pixel_format_;
 
     // Vimba singleton
     VimbaSystem& vimba_system_;
@@ -147,34 +149,20 @@ class VimbaROS {
     VmbInt64_t vimba_width_;
     // The current height
     VmbInt64_t vimba_height_;
+    // The max width
+    VmbInt64_t vimba_max_width_;
+    // The max height
+    VmbInt64_t vimba_max_height_;
     // A readable value for every Vimba error code
     std::map<VmbErrorType, std::string> vimba_error_code_to_message_;
 
     /*************/
     /* FUNCTIONS */
     /*************/
-    //! Must be used before calling start() in a non-triggered mode.
-    //void setFrameCallback(boost::function<void (tPvFrame*)> callback);
-    //! Start capture.
-    //void start(FrameStartTriggerMode = Freerun, AcquisitionMode = Continuous);
-    //! Stop capture.
-    //void stop();
-    //! Capture a single frame from the camera. Must be called after
-    //! start(Software Triggered).
-    //tPvFrame* grab(unsigned long timeout_ms = PVINFINITE);
 
-    void setExposure(unsigned int val, AutoSettingMode auto_mode);
-    void setGain(unsigned int val, AutoSettingMode auto_mode);
-    void setWhiteBalance(unsigned int blue, unsigned int red, AutoSettingMode auto_mode);
-    void setRoi(unsigned int x, unsigned int y,
-                unsigned int width, unsigned int height);
-    void setRoiToWholeFrame();
-    void setBinning(unsigned int binning_x = 1, unsigned int binning_y = 1);
-    void setDecimation(unsigned int dec_x = 1, unsigned int dec_y = 1);
-
-
-    template<typename T> bool getFeatureValue(std::string feature_str, T val);
-    template<typename T> bool setFeatureValue(std::string feature_str, T val);
+    template<typename T> bool getFeatureValue(const std::string& feature_str, T& val);
+    bool getFeatureValue(const std::string& feature_str, std::string& val);
+    template<typename T> bool setFeatureValue(const std::string& feature_str, const T& val);
 
     void updateTriggerConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateExposureConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
@@ -206,6 +194,8 @@ class VimbaROS {
     std::string accessModeToString(VmbAccessModeType modeType);
     // Parser of Vimba Interface Type
     std::string interfaceToString(VmbInterfaceType interfaceType);
+    // Parser of trigger mode to non-readable integer
+    int getTriggerModeInt(std::string mode);
     // Open the required camera
     CameraPtr openCamera(std::string id);
     // Dummy function to print all features of a camera
