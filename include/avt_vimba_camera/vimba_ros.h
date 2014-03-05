@@ -39,9 +39,11 @@
 #include <avt_vimba_camera/frame_observer.h>
 
 #include <ros/ros.h>
+#include <driver_base/SensorLevels.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/SetCameraInfo.h>
+#include <camera_info_manager/camera_info_manager.h>
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
 
@@ -103,6 +105,7 @@ class VimbaROS {
   private:
     // true if camera is started
     bool running_;
+    bool first_run_;
 
     // ROS Nodehandles
     ros::NodeHandle nh_;
@@ -123,8 +126,10 @@ class VimbaROS {
     int trigger_mode_int_;
 
     // ROS messages
+    typedef driver_base::SensorLevels Levels;
     sensor_msgs::Image img_;
     sensor_msgs::CameraInfo cam_info_;
+    boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
 
     // Dynamic reconfigure
     typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
@@ -133,26 +138,19 @@ class VimbaROS {
 
     // Camera configuration
     Config camera_config_;
-    AcquisitionMode acquisition_mode_;
 
     // Vimba singleton
     VimbaSystem& vimba_system_;
-    // The currently streaming camera
-    FrameObserver* vimba_frame_observer_ptr_;
     // IFrame Observer
+    FrameObserver* vimba_frame_observer_ptr_;
+    // The currently streaming camera
     CameraPtr vimba_camera_ptr_;
     // Current frame
     FramePtr vimba_frame_ptr_;
-    // The current pixel format
-    VmbInt64_t vimba_pixel_format_;
-    // The current width
-    VmbInt64_t vimba_width_;
-    // The current height
-    VmbInt64_t vimba_height_;
     // The max width
-    VmbInt64_t vimba_max_width_;
+    VmbInt64_t vimba_camera_max_width_;
     // The max height
-    VmbInt64_t vimba_max_height_;
+    VmbInt64_t vimba_camera_max_height_;
     // A readable value for every Vimba error code
     std::map<VmbErrorType, std::string> vimba_error_code_to_message_;
 
@@ -169,12 +167,12 @@ class VimbaROS {
     void updateGainConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateWhiteBalanceConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateImageModeConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
-    void updateROIConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
+    void updateROIConfig(Config& config, FeaturePtrVector feature_ptr_vec);
     void updateBandwidthConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updatePixelFormatConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
 
 
-    void start();
+    void start(Config& config);
     void stop();
     void frameCallback(const FramePtr vimba_frame_ptr);
     bool frameToImage(const FramePtr vimba_frame_ptr, sensor_msgs::Image& image);
@@ -183,8 +181,10 @@ class VimbaROS {
     // Service callback for setting calibration.
     bool setCameraInfo(sensor_msgs::SetCameraInfo::Request& req,
                        sensor_msgs::SetCameraInfo::Response& rsp);
+    // Configure camera info
+    void updateCameraInfo(const Config& config);
     // Dynamic Reconfigure Callback
-    void configure(const Config& config, uint32_t level);
+    void configure(Config& newconfig, uint32_t level);
 
     // Init function to setup AVT Vimba SDK
     void initApi(void);

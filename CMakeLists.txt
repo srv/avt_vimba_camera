@@ -5,7 +5,7 @@ project(avt_vimba_camera)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  camera_calibration_parsers
+  camera_info_manager
   diagnostic_updater
   driver_base
   dynamic_reconfigure
