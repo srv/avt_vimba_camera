@@ -1,0 +1,102 @@
+<launch>
+
+	<node name="camera" pkg="avt_vimba_camera" type="avt_vimba_camera_node" output="screen">
+		<param name="guid" value="50-0503328910"/>
+		<param name="ip_address" value="192.168.3.103"/>
+		<param name="camera_info_url" value="$(find avt_vimba_camera)/camera_info.yaml"/>
+		<param name="frame_id" value="camera"/>
+		<param name="trig_timestamp_topic" value=""/>
+
+		<!-- Trigger mode:
+			0. Freerun
+			1. SyncIn1
+			2. SyncIn2
+			3. SyncIn3
+			4. SyncIn4
+			5. FixedRate
+			6. Software
+		-->
+		<param name="trigger_mode" value="0"/>
+
+		<!-- Acquisition mode:
+			0. Continuous
+			1. SingleFrame
+			2. MultiFrame
+			3. Recorder
+		-->
+		<param name="acquisition_mode" value="0"/>
+
+		<!-- Acquisition rate in fps -->
+		<param name="acquisition_rate" value="2"/>
+
+		<!-- Pixel format:
+			0. Mono8
+			1. Mono12
+			2. Mono12Packed
+			3. BayerRG8
+			4. BayerRG12Packed
+			5. BayerGR12
+			6. RGB8Packed
+			7. BGR8Packed
+		-->
+		<param name="pixel_format" value="3"/>
+		<!-- Exposure in us -->
+		<param name="exposure" value="1000"/>
+		<!-- Gain in dB -->
+		<param name="gain" value="0"/>
+
+		<!-- Auto control
+			0. Off
+			1. Once
+			2. Auto
+		-->
+		<param name="auto_exposure" value="2"/>
+		<param name="auto_gain" value="2"/>
+		<param name="auto_whitebalance" value="2"/>
+
+		<param name="binning_x" value="1"/>
+		<param name="binning_y" value="1"/>
+		<param name="decimation_x" value="1"/>
+		<param name="decimation_y" value="1"/>
+		<param name="x_offset" value="0"/>
+		<param name="y_offset" value="0"/>
+		<param name="width" value="2452"/>
+		<param name="height" value="2056"/>
+
+		<param name="stream_bytes_per_second" value="45000000"/>
+	</node>
+
+</launch>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
