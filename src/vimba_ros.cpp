@@ -93,14 +93,8 @@ VimbaROS::VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp)
 void VimbaROS::start(Config& config) {
   if (running_) return;
 
-
   std::string ip_str   = config.ip_address;
   std::string guid_str = config.guid;
-
-  //ip_str = "192.168.3.103";
-  //guid_str = "50-0503328910";
-
-  ROS_INFO_STREAM("KK " << ip_str << " guid " << guid_str);
 
   // Determine which camera to use. Try IP first
   if (!ip_str.empty()) {
@@ -126,7 +120,7 @@ void VimbaROS::start(Config& config) {
   // Set all camera configurations
   FeaturePtrVector feature_ptr_vec;
   vimba_camera_ptr_->GetFeatures(feature_ptr_vec);
-  updateTriggerConfig(config, feature_ptr_vec);
+  updateAcquisitionConfig(config, feature_ptr_vec);
   updateExposureConfig(config, feature_ptr_vec);
   updateGainConfig(config, feature_ptr_vec);
   updateWhiteBalanceConfig(config, feature_ptr_vec);
@@ -134,7 +128,7 @@ void VimbaROS::start(Config& config) {
   updateROIConfig(config, feature_ptr_vec);
   updateBandwidthConfig(config, feature_ptr_vec);
   updatePixelFormatConfig(config, feature_ptr_vec);
-  updateCameraInfo(camera_config_);
+  updateCameraInfo(config);
 
   /////////////////////////////////////////////////////////////////////////////
   getFeatureValue("TriggerSource", trigger_mode_);
@@ -235,30 +229,15 @@ void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
   // if ( trigger_mode_ == SyncIn1  && !trig_time_.isZero() ) {
 
   img.header.stamp = cam_info_.header.stamp = ros::Time::now();
-  VmbUint64_t timestamp;
-  vimba_frame_ptr->GetTimestamp(timestamp);
-  ROS_INFO_STREAM("[AVT_Vimba_ROS]: NEW_FRAME Timestamp: " << timestamp);
+  //VmbUint64_t timestamp;
+  //vimba_frame_ptr->GetTimestamp(timestamp);
+  //ROS_INFO_STREAM("[AVT_Vimba_ROS]: NEW_FRAME Timestamp: " << timestamp);
 
   img.header.frame_id = frame_id_.c_str();
 
-  //cam_info_.header.frame_id = img.header.frame_id = frame_id_.c_str();
-  // Set the operational parameters in CameraInfo (binning, ROI)
-  //cam_info_.height = camera_config_.height;
-  //cam_info_.width = camera_config_.width;
-  //cam_info_.binning_x = camera_config_.binning_x;
-  //cam_info_.binning_y = camera_config_.binning_y;
-  // ROI in CameraInfo is in unbinned coordinates, need to scale up
-  //vimba_frame_ptr->GetOffsetX(cam_info_.roi.x_offset);
-  //vimba_frame_ptr->GetOffsetY(cam_info_.roi.y_offset);
-  //vimba_frame_ptr->GetHeight(cam_info_.roi.height);
-  //vimba_frame_ptr->GetWidth(cam_info_.roi.width);
-  //cam_info_.roi.do_rectify = (cam_info_.width == cam_info_.roi.width)||(cam_info_.height == cam_info_.roi.height);
-
   if(streaming_pub_.getNumSubscribers() > 0){
-    ROS_INFO_STREAM("We've got subscribers");
     if (frameToImage(vimba_frame_ptr, img)){
-      img_ = img;
-      streaming_pub_.publish(img_, cam_info_); // add timestamp
+      streaming_pub_.publish(img, cam_info_); // add timestamp
     }
   }
   // Queue the frame so that we can receive a new one.
@@ -275,7 +254,6 @@ bool VimbaROS::frameToImage(const FramePtr vimba_frame_ptr,
 
   // NOTE: YUV and ARGB formats not supported
   std::string encoding;
-  ROS_INFO_STREAM("Pixel format: " << PixelFormatMode[camera_config_.pixel_format] << " = " << pixel_format);
   if      (pixel_format == VmbPixelFormatMono8          ) encoding = sensor_msgs::image_encodings::MONO8;
   else if (pixel_format == VmbPixelFormatMono10         ) encoding = sensor_msgs::image_encodings::MONO16;
   else if (pixel_format == VmbPixelFormatMono12         ) encoding = sensor_msgs::image_encodings::MONO16;
@@ -339,26 +317,33 @@ void VimbaROS::updateCameraInfo(const Config& config) {
   cam_info_.header.frame_id = config.frame_id;
 
   // Set the operational parameters in CameraInfo (binning, ROI)
-  cam_info_.height = vimba_camera_max_height_;
-  cam_info_.width = vimba_camera_max_width_;
+  cam_info_.height    = config.height;
+  cam_info_.width     = config.width;
   cam_info_.binning_x = config.binning_x;
   cam_info_.binning_y = config.binning_y;
   // ROI in CameraInfo is in unbinned coordinates, need to scale up
-  cam_info_.roi.x_offset = config.x_offset;
-  cam_info_.roi.y_offset = config.y_offset;
-  cam_info_.roi.height = config.height;
-  cam_info_.roi.width = config.width;
+  cam_info_.roi.x_offset = config.roi_offset_x;
+  cam_info_.roi.y_offset = config.roi_offset_y;
+  cam_info_.roi.height   = config.roi_height;
+  cam_info_.roi.width    = config.roi_width;
 
   // set the new URL and load CameraInfo (if any) from it
-  if(config.camera_info_url != camera_config_.camera_info_url || first_run_)
-  if (cinfo_->validateURL(config.camera_info_url))
-  {
-    ROS_INFO_STREAM("KK loading camera info " << config.camera_info_url);
-    cinfo_->loadCameraInfo(config.camera_info_url);
-    cam_info_ = cinfo_->getCameraInfo();
+  if(config.camera_info_url != camera_config_.camera_info_url || first_run_) {
+    cinfo_->setCameraName(config.frame_id);
+    if (cinfo_->validateURL(config.camera_info_url)) {
+      cinfo_->loadCameraInfo(config.camera_info_url);
+      cam_info_ = cinfo_->getCameraInfo();
+    } else {
+      ROS_WARN_STREAM("Camera info URL not valid: " << config.camera_info_url);
+    }
   }
 
-  cam_info_.roi.do_rectify = (cam_info_.width != cam_info_.roi.width)||(cam_info_.height != cam_info_.roi.height);
+  bool roiMatchesCalibration = (cam_info_.height == config.roi_height
+                              && cam_info_.width == config.roi_width);
+  bool resolutionMatchesCalibration = (cam_info_.width == config.width
+                                   && cam_info_.height == config.height);
+
+  cam_info_.roi.do_rectify = roiMatchesCalibration || resolutionMatchesCalibration;
 }
 
 /** Dynamic reconfigure callback
@@ -387,21 +372,18 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
     newconfig.frame_id = tf::resolve(tf_prefix, newconfig.frame_id);*/
 
     if (running_ && (level & Levels::RECONFIGURE_CLOSE)) {
-      ROS_INFO_STREAM("KK reconfigure close");
       // The device has to be closed to change these params
       stop();
       start(newconfig);
     } else if (running_ && (level & Levels::RECONFIGURE_STOP)) {
-      ROS_INFO_STREAM("KK reconfigure stop");
       // The device has to stop streaming to change these params
       stop();
       start(newconfig);
     } else if (!running_) {
-      ROS_INFO_STREAM("not running");
+      camera_config_ = newconfig;
       start(newconfig);
       first_run_ = false;
     } else if (running_) {
-      ROS_INFO_STREAM("KK reconfigure running");
       // only change those params that can be changed while running
       FeaturePtrVector feature_ptr_vec;
       vimba_camera_ptr_->GetFeatures(feature_ptr_vec);
@@ -411,7 +393,7 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
       updateImageModeConfig(newconfig, feature_ptr_vec);
       updateROIConfig(newconfig, feature_ptr_vec);
       updateBandwidthConfig(newconfig, feature_ptr_vec);
-      updateCameraInfo(camera_config_);
+      updateCameraInfo(newconfig);
     }
     camera_config_ = newconfig;
   } catch (const std::exception& e) {
@@ -420,142 +402,297 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
 }
 
 /** Change the Trigger configuration */
-void VimbaROS::updateTriggerConfig(const Config& config,
+void VimbaROS::updateAcquisitionConfig(const Config& config,
                                    FeaturePtrVector feature_ptr_vec) {
-  if (config.trigger_mode != camera_config_.trigger_mode || first_run_) {
-    setFeatureValue("TriggerSource", TriggerMode[config.trigger_mode]);
-  }
+  bool changed = false;
   if (config.acquisition_mode != camera_config_.acquisition_mode || first_run_) {
-    setFeatureValue("AcquisitionMode",
-                    AcquisitionMode[config.acquisition_mode]);
+    changed = true;
+    setFeatureValue("AcquisitionMode", config.acquisition_mode.c_str());
   }
   if (config.acquisition_rate != camera_config_.acquisition_rate || first_run_) {
+    changed = true;
     setFeatureValue("AcquisitionFrameRateAbs",
                     static_cast<float>(config.acquisition_rate));
+  }
+  if (config.trigger_mode != camera_config_.trigger_mode || first_run_) {
+    changed = true;
+    setFeatureValue("TriggerSource", config.trigger_mode.c_str());
+  }
+  if (config.trigger_activation != camera_config_.trigger_activation || first_run_) {
+    changed = true;
+    setFeatureValue("TriggerActivation", config.trigger_activation.c_str());
+  }
+  if (config.trigger_delay != camera_config_.trigger_delay || first_run_) {
+    changed = true;
+    setFeatureValue("TriggerDelay", config.trigger_delay);
+  }
+  if(changed){
+    ROS_INFO_STREAM("New Trigger config: "
+      << "\n\tAcquisitionMode         : " << config.acquisition_mode   << " was " << camera_config_.acquisition_mode
+      << "\n\tAcquisitionFrameRateAbs : " << config.acquisition_rate   << " was " << camera_config_.acquisition_rate
+      << "\n\tTriggerSource           : " << config.trigger_mode       << " was " << camera_config_.trigger_mode
+      << "\n\tTriggerActivation       : " << config.trigger_activation << " was " << camera_config_.trigger_activation
+      << "\n\tTriggerDelay            : " << config.trigger_delay      << " was " << camera_config_.trigger_delay);
   }
 }
 
 /** Change the Exposure configuration */
 void VimbaROS::updateExposureConfig(const Config& config,
                                     FeaturePtrVector feature_ptr_vec) {
-  ROS_INFO_STREAM("KK set autoexp : " <<  config.auto_exposure << " == " << camera_config_.auto_exposure);
-  if (config.auto_exposure != camera_config_.auto_exposure || first_run_) {
-    setFeatureValue("ExposureAuto", AutoMode[config.auto_exposure]);
-    ROS_INFO_STREAM("KK set autoexp : " <<  AutoMode[config.auto_exposure]);
+  bool changed = false;
+  if (config.exposure != camera_config_.exposure || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureTimeAbs", static_cast<float>(config.exposure));
+  }
+  if (config.exposure_auto != camera_config_.exposure_auto || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureAuto", config.exposure_auto.c_str());
+  }
+  if (config.exposure_auto_tol != camera_config_.exposure_auto_tol || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureAutoAdjustTol",
+                    static_cast<VmbInt64_t>(config.exposure_auto_tol));
   }
   if (config.exposure_auto_max != camera_config_.exposure_auto_max || first_run_) {
+    changed = true;
     setFeatureValue("ExposureAutoMax",
                     static_cast<VmbInt64_t>(config.exposure_auto_max));
   }
+  if (config.exposure_auto_min != camera_config_.exposure_auto_min || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureAutoMin",
+                    static_cast<VmbInt64_t>(config.exposure_auto_min));
+  }
+  if (config.exposure_auto_outliers != camera_config_.exposure_auto_outliers || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureAutoOutliers",
+                    static_cast<VmbInt64_t>(config.exposure_auto_outliers));
+  }
+  if (config.exposure_auto_rate != camera_config_.exposure_auto_rate || first_run_) {
+    changed = true;
+    setFeatureValue("ExposureAutoRate",
+                    static_cast<VmbInt64_t>(config.exposure_auto_rate));
+  }
   if (config.exposure_auto_target != camera_config_.exposure_auto_target || first_run_) {
+    changed = true;
     setFeatureValue("ExposureAutoTarget",
                     static_cast<VmbInt64_t>(config.exposure_auto_target));
   }
-  if (config.exposure != camera_config_.exposure || first_run_) {
-    setFeatureValue("ExposureTimeAbs", static_cast<float>(config.exposure));
+  if(changed){
+    ROS_INFO_STREAM("New Exposure config: "
+      << "\n\tExposureTimeAbs       : " << config.exposure               << " was " << camera_config_.exposure
+      << "\n\tExposureAuto          : " << config.exposure_auto          << " was " << camera_config_.exposure_auto
+      << "\n\tExposureAutoAdjustTol : " << config.exposure_auto_tol      << " was " << camera_config_.exposure_auto_tol
+      << "\n\tExposureAutoMax       : " << config.exposure_auto_max      << " was " << camera_config_.exposure_auto_max
+      << "\n\tExposureAutoMin       : " << config.exposure_auto_min      << " was " << camera_config_.exposure_auto_min
+      << "\n\tExposureAutoOutliers  : " << config.exposure_auto_outliers << " was " << camera_config_.exposure_auto_outliers
+      << "\n\tExposureAutoRate      : " << config.exposure_auto_rate     << " was " << camera_config_.exposure_auto_rate
+      << "\n\tExposureAutoTarget    : " << config.exposure_auto_target   << " was " << camera_config_.exposure_auto_target);
   }
 }
 
 /** Change the Gain configuration */
 void VimbaROS::updateGainConfig(const Config& config,
                                 FeaturePtrVector feature_ptr_vec) {
-  if (config.auto_gain != camera_config_.auto_gain || first_run_) {
-    setFeatureValue("GainAuto", AutoMode[config.auto_gain]);
+  bool changed = false;
+  if (config.gain != camera_config_.gain || first_run_) {
+    changed = true;
+    setFeatureValue("Gain", static_cast<float>(config.gain));
+  }
+  if (config.gain_auto != camera_config_.gain_auto || first_run_) {
+    changed = true;
+    setFeatureValue("GainAuto", config.gain_auto.c_str());
+  }
+  if (config.gain_auto_tol != camera_config_.gain_auto_tol || first_run_) {
+    changed = true;
+    setFeatureValue("GainAutoAdjustTol",
+                    static_cast<VmbInt64_t>(config.gain_auto_tol));
   }
   if (config.gain_auto_max != camera_config_.gain_auto_max || first_run_) {
+    changed = true;
     setFeatureValue("GainAutoMax", static_cast<float>(config.gain_auto_max));
   }
-  if (config.gain_auto_target != camera_config_.gain_auto_target || first_run_) {
-    setFeatureValue("GainAutoTarget", static_cast<VmbInt64_t>(config.gain_auto_target));
+  if (config.gain_auto_min != camera_config_.gain_auto_min || first_run_) {
+    changed = true;
+    setFeatureValue("GainAutoMin",
+                    static_cast<VmbInt64_t>(config.gain_auto_min));
   }
-  if (config.gain != camera_config_.gain || first_run_) {
-    setFeatureValue("Gain", static_cast<float>(config.gain));
+  if (config.gain_auto_outliers != camera_config_.gain_auto_outliers || first_run_) {
+    changed = true;
+    setFeatureValue("GainAutoMin",
+                    static_cast<VmbInt64_t>(config.gain_auto_outliers));
+  }
+  if (config.gain_auto_rate != camera_config_.gain_auto_rate || first_run_) {
+    changed = true;
+    setFeatureValue("GainAutoOutliers",
+                    static_cast<VmbInt64_t>(config.gain_auto_rate));
+  }
+  if (config.gain_auto_target != camera_config_.gain_auto_target || first_run_) {
+    changed = true;
+    setFeatureValue("GainAutoRate", static_cast<VmbInt64_t>(config.gain_auto_target));
+  }
+  if(changed){
+    ROS_INFO_STREAM("New Exposure config: "
+      << "\n\tGain              : " << config.gain               << " was " << camera_config_.gain
+      << "\n\tGainAuto          : " << config.gain_auto          << " was " << camera_config_.gain_auto
+      << "\n\tGainAutoAdjustTol : " << config.gain_auto_tol      << " was " << camera_config_.gain_auto_tol
+      << "\n\tGainAutoMax       : " << config.gain_auto_max      << " was " << camera_config_.gain_auto_max
+      << "\n\tGainAutoMin       : " << config.gain_auto_min      << " was " << camera_config_.gain_auto_min
+      << "\n\tGainAutoOutliers  : " << config.gain_auto_outliers << " was " << camera_config_.gain_auto_outliers
+      << "\n\tGainAutoRate      : " << config.gain_auto_rate     << " was " << camera_config_.gain_auto_rate
+      << "\n\tGainAutoTarget    : " << config.gain_auto_target   << " was " << camera_config_.gain_auto_target);
   }
 }
 
 /** Change the White Balance configuration */
 void VimbaROS::updateWhiteBalanceConfig(const Config& config,
-                                        FeaturePtrVector feature_ptr_vec)
-{
-  if (config.auto_whitebalance != camera_config_.auto_whitebalance || first_run_) {
-    setFeatureValue("BalanceWhiteAuto", AutoMode[config.auto_whitebalance]);
+                                        FeaturePtrVector feature_ptr_vec){
+  bool changed = false;
+  if (config.balance_ratio_abs != camera_config_.balance_ratio_abs || first_run_) {
+    changed = true;
+    setFeatureValue("BalanceRatioAbs", static_cast<float>(config.balance_ratio_abs));
   }
   if (config.balance_ratio_selector != camera_config_.balance_ratio_selector || first_run_) {
-    setFeatureValue("BalanceRatioSelector",
-                    BalanceRatioMode[config.balance_ratio_selector]);
+    changed = true;
+    setFeatureValue("BalanceRatioSelector", config.balance_ratio_selector.c_str());
   }
-  if (config.balance_ratio_abs != camera_config_.balance_ratio_abs || first_run_) {
-    setFeatureValue("BalanceRatioAbs",
-                    static_cast<float>(config.balance_ratio_abs));
+  if (config.whitebalance_auto != camera_config_.whitebalance_auto || first_run_) {
+    changed = true;
+    setFeatureValue("BalanceWhiteAuto", config.whitebalance_auto.c_str());
+  }
+  if (config.whitebalance_auto_tol != camera_config_.whitebalance_auto_tol || first_run_) {
+    changed = true;
+    setFeatureValue("BalanceWhiteAutoAdjustTol", static_cast<VmbInt64_t>(config.whitebalance_auto_tol));
+  }
+  if (config.whitebalance_auto_rate != camera_config_.whitebalance_auto_rate || first_run_) {
+    changed = true;
+    setFeatureValue("BalanceWhiteAutoRate", static_cast<VmbInt64_t>(config.whitebalance_auto_rate));
+  }
+  if(changed){
+    ROS_INFO_STREAM("New ROI config: "
+      << "\n\tBalanceRatioAbs           : " << config.balance_ratio_abs      << " was " << camera_config_.balance_ratio_abs
+      << "\n\tBalanceRatioSelector      : " << config.balance_ratio_selector << " was " << camera_config_.balance_ratio_selector
+      << "\n\tBalanceWhiteAuto          : " << config.whitebalance_auto      << " was " << camera_config_.whitebalance_auto
+      << "\n\tBalanceWhiteAutoAdjustTol : " << config.whitebalance_auto_tol  << " was " << camera_config_.whitebalance_auto_tol
+      << "\n\tBalanceWhiteAutoRate      : " << config.whitebalance_auto_rate << " was " << camera_config_.whitebalance_auto_rate);
   }
 }
 
 /** Change the Binning and Decimation configuration */
 void VimbaROS::updateImageModeConfig(const Config& config,
                                      FeaturePtrVector feature_ptr_vec) {
+  bool changed = false;
   if (config.decimation_x != camera_config_.decimation_x || first_run_) {
+    changed = true;
     setFeatureValue("DecimationHorizontal",
                     static_cast<VmbInt64_t>(config.decimation_x));
   }
   if (config.decimation_y != camera_config_.decimation_y || first_run_) {
+    changed = true;
     setFeatureValue("DecimationVertical", static_cast<VmbInt64_t>(config.decimation_y));
   }
   if (config.binning_x != camera_config_.binning_x || first_run_) {
+    changed = true;
     setFeatureValue("BinningHorizontal", static_cast<VmbInt64_t>(config.binning_x));
   }
   if (config.binning_y != camera_config_.binning_y || first_run_) {
+    changed = true;
     setFeatureValue("BinningVertical", static_cast<VmbInt64_t>(config.binning_y));
+  }
+  if(changed){
+    ROS_INFO_STREAM("New Image config: "
+      << "\n\tDecimationHorizontal : " << config.decimation_x << " was " << camera_config_.decimation_x
+      << "\n\tDecimationVertical   : " << config.decimation_y << " was " << camera_config_.decimation_y
+      << "\n\tBinningHorizontal    : " << config.binning_x    << " was " << camera_config_.binning_x
+      << "\n\tBinningVertical      : " << config.binning_y    << " was " << camera_config_.binning_y);
   }
 }
 
 /** Change the ROI configuration */
 void VimbaROS::updateROIConfig(Config& config,
                                FeaturePtrVector feature_ptr_vec) {
-  if (config.x_offset != camera_config_.x_offset || first_run_) {
-    setFeatureValue("OffsetX", static_cast<VmbInt64_t>(config.x_offset));
+  bool changed = false;
+
+  // Region of interest configuration
+  // Make sure ROI fits in image
+  config.width        = std::min(config.width,  (int)vimba_camera_max_width_);
+  config.height       = std::min(config.height, (int)vimba_camera_max_height_);
+  config.roi_offset_x = std::min(config.roi_offset_x, config.width - 1);
+  config.roi_offset_y = std::min(config.roi_offset_y, config.height - 1);
+  config.roi_width    = std::min(config.roi_width,  config.width  - config.roi_offset_x);
+  config.roi_height   = std::min(config.roi_height, config.height - config.roi_offset_y);
+  // If width or height is 0, set it as large as possible
+  int width  = config.roi_width  ? config.roi_width  : vimba_camera_max_width_  - config.roi_offset_x;
+  int height = config.roi_height ? config.roi_height : vimba_camera_max_height_ - config.roi_offset_y;
+
+  // Adjust full-res ROI to binning ROI
+  /// @todo Replicating logic from polledCallback
+  int offset_x = config.roi_offset_x / config.binning_x;
+  int offset_y = config.roi_offset_y / config.binning_y;
+  unsigned int right_x  = (config.roi_offset_x + width  + config.binning_x - 1) / config.binning_x;
+  unsigned int bottom_y = (config.roi_offset_y + height + config.binning_y - 1) / config.binning_y;
+  // Rounding up is bad when at max resolution which is not divisible by the amount of binning
+  right_x  = std::min(right_x,  (unsigned)(config.width  / config.binning_x));
+  bottom_y = std::min(bottom_y, (unsigned)(config.height / config.binning_y));
+  width    = right_x  - offset_x;
+  height   = bottom_y - offset_y;
+
+  config.width  = width;
+  config.height = height;
+
+  if (config.roi_offset_x != camera_config_.roi_offset_x || first_run_) {
+    changed = true;
+    setFeatureValue("OffsetX", static_cast<VmbInt64_t>(config.roi_offset_x));
   }
-  if (config.y_offset != camera_config_.y_offset || first_run_) {
-    setFeatureValue("OffsetY", static_cast<VmbInt64_t>(config.y_offset));
+  if (config.roi_offset_y != camera_config_.roi_offset_y || first_run_) {
+    changed = true;
+    setFeatureValue("OffsetY", static_cast<VmbInt64_t>(config.roi_offset_y));
   }
   if (config.width != camera_config_.width || first_run_) {
-    if (config.width != 0) {
-      setFeatureValue("Width", static_cast<VmbInt64_t>(config.width));
-    } else if (config.width == 0) {
-      setFeatureValue("Width", vimba_camera_max_width_);
-      config.width = vimba_camera_max_width_;
-      camera_config_.width = vimba_camera_max_width_;
-    }
+    changed = true;
+    setFeatureValue("Width", static_cast<VmbInt64_t>(config.width));
   }
   if (config.height != camera_config_.height || first_run_) {
-    if (config.height != 0) {
-      setFeatureValue("Height", static_cast<VmbInt64_t>(config.height));
-    } else if (config.height == 0) {
-      setFeatureValue("Height", vimba_camera_max_height_);
-      config.height = vimba_camera_max_height_;
-      camera_config_.height = vimba_camera_max_height_;
-    }
+    changed = true;
+    setFeatureValue("Height", static_cast<VmbInt64_t>(config.height));
+  }
+
+  if(changed){
+    ROS_INFO_STREAM("New ROI config: "
+      << "\n\tOffsetX : " << config.roi_offset_x << " was " << camera_config_.roi_offset_x
+      << "\n\tOffsetY : " << config.roi_offset_y << " was " << camera_config_.roi_offset_y
+      << "\n\tWidth   : " << config.width        << " was " << camera_config_.width
+      << "\n\tHeight  : " << config.height   << " was " << camera_config_.height);
   }
 }
 
 /** Change the Bandwidth configuration */
 void VimbaROS::updateBandwidthConfig(const Config& config,
                                      FeaturePtrVector feature_ptr_vec) {
-  if (config.auto_adjust_stream_bytes_per_second
-     != camera_config_.auto_adjust_stream_bytes_per_second || first_run_) {
-    // TODO(m)
-  }
+  bool changed = false;
   if (config.stream_bytes_per_second
       != camera_config_.stream_bytes_per_second || first_run_) {
+    changed = true;
     setFeatureValue("StreamBytesPerSecond",
                     static_cast<VmbInt64_t>(config.stream_bytes_per_second));
+  }
+  if(changed){
+    ROS_INFO_STREAM("New Bandwidth config: "
+      << "\n\tStreamBytesPerSecond : " << config.stream_bytes_per_second << " was " << camera_config_.stream_bytes_per_second);
   }
 }
 
 /** Change the Pixel Format configuration */
 void VimbaROS::updatePixelFormatConfig(const Config& config,
                                        FeaturePtrVector feature_ptr_vec) {
+  bool changed = false;
   if (config.pixel_format != camera_config_.pixel_format || first_run_) {
-    setFeatureValue("PixelFormat", PixelFormatMode[config.pixel_format]);
+    changed = true;
+    setFeatureValue("PixelFormat", config.pixel_format.c_str());
+  }
+  if(changed){
+    ROS_INFO_STREAM("New PixelFormat config: "
+      << "\n\tPixelFormat : " << config.pixel_format << " was " << camera_config_.pixel_format);
   }
 }
 
@@ -679,7 +816,7 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
     err = vimba_feature_ptr->IsWritable(writable);
     if (VmbErrorSuccess == err) {
       if (writable) {
-        ROS_INFO_STREAM("Setting feature " << feature_str << " value " << val);
+        ROS_DEBUG_STREAM("Setting feature " << feature_str << " value " << val);
         VmbFeatureDataType data_type;
         err == vimba_feature_ptr->GetDataType(data_type);
         if (VmbErrorSuccess == err) {
@@ -695,15 +832,15 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
                                  << " is available now.");
               }
             } else {
-              ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str << ": ERROR " 
-                              << errorCodeToMessage(err));
+              ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str <<
+                ": value unavailable\n\tERROR " << errorCodeToMessage(err));
             }
           } else {
             err = vimba_feature_ptr->SetValue(val);
           }
         } else {
-          ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str << ": ERROR " 
-                           << errorCodeToMessage(err));
+          ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str <<
+            ": Bad data type\n\tERROR " << errorCodeToMessage(err));
         }
       } else {
         ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature "
@@ -717,11 +854,6 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
   } else {
     ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str
       << "\n Error: " << errorCodeToMessage(err));
-  }
-
-  if (VmbErrorSuccess != err) {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str << ": ERROR " 
-      << errorCodeToMessage(err));
   }
   return (VmbErrorSuccess == err);
 }
@@ -871,7 +1003,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
 
     err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err){
-      printAllCameraFeatures(camera);
+      //printAllCameraFeatures(camera);
     } else {
       ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
         << "\n Error: " << errorCodeToMessage(err));

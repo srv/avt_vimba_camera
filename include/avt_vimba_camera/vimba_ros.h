@@ -82,10 +82,7 @@ enum PixelFormatMode {
   BayerRG12Packed,
   BayerRG12,
   RGB8Packed,
-  BGR8Packed,
-  YUV411Packed,
-  YUV422Packed,
-  YUV444Packed
+  BGR8Packed
 };
 
 enum AutoSettingMode {
@@ -127,7 +124,6 @@ class VimbaROS {
 
     // ROS messages
     typedef driver_base::SensorLevels Levels;
-    sensor_msgs::Image img_;
     sensor_msgs::CameraInfo cam_info_;
     boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
 
@@ -162,7 +158,7 @@ class VimbaROS {
     bool getFeatureValue(const std::string& feature_str, std::string& val);
     template<typename T> bool setFeatureValue(const std::string& feature_str, const T& val);
 
-    void updateTriggerConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
+    void updateAcquisitionConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateExposureConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateGainConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateWhiteBalanceConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
