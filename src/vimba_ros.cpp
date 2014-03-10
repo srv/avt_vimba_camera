@@ -31,10 +31,11 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/vimba_ros.h>
+
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/fill_image.h>
-#include <boost/lexical_cast.hpp>
 
+#include <boost/lexical_cast.hpp>
 #include <sstream>
 
 namespace avt_vimba_camera {
@@ -79,9 +80,9 @@ VimbaROS::VimbaROS(ros::NodeHandle nh, ros::NodeHandle nhp)
   first_run_ = true;
 
   // Service call for setting calibration.
-  set_camera_info_srv_ = nh_.advertiseService("set_camera_info",
-                                              &VimbaROS::setCameraInfo,
-                                              this);
+  //set_camera_info_srv_ = nh_.advertiseService("set_camera_info",
+  //                                            &VimbaROS::setCameraInfo,
+  //                                            this);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&VimbaROS::configure,
@@ -158,7 +159,7 @@ void VimbaROS::start(Config& config) {
       }
       break;
     }
-    case FixedRate:
+    /*case FixedRate:
     {
       // TODO(m)
       break;
@@ -172,7 +173,7 @@ void VimbaROS::start(Config& config) {
     {
       // TODO(m)
       break;
-    }
+    }*/
     default:
     {
       ROS_ERROR_STREAM("Trigger mode " <<
@@ -192,31 +193,6 @@ void VimbaROS::stop() {
   streaming_pub_.shutdown();
 
   running_ = false;
-}
-
-bool VimbaROS::setCameraInfo(sensor_msgs::SetCameraInfo::Request& req,
-                             sensor_msgs::SetCameraInfo::Response& rsp) {
-  ROS_INFO("New camera info received");
-
-  // Sanity check:
-  // the image dimensions should match the max resolution of the sensor.
-  sensor_msgs::CameraInfo &info = req.camera_info;
-  VmbUint32_t height,width;
-  vimba_frame_ptr_->GetHeight(height);
-  vimba_frame_ptr_->GetWidth(width);
-  if (info.width != width || info.height != height) {
-    rsp.success = false;
-    rsp.status_message = (boost::format("Camera_info resolution %ix%i does not "
-                                        "match current setting, camera running "
-                                        "at resolution %ix%i.") % info.width 
-                                                                % info.height % width % height).str();
-    ROS_ERROR("%s", rsp.status_message.c_str());
-    return true;
-  }
-
-  // TODO(m)
-
-  return true;
 }
 
 void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
@@ -365,11 +341,9 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
 
 
     // resolve frame ID using tf_prefix parameter
-    /*if (newconfig.frame_id == "")
+    if (newconfig.frame_id == "") {
       newconfig.frame_id = "camera";
-    std::string tf_prefix = tf::getPrefixParam(priv_nh_);
-    ROS_DEBUG_STREAM("tf_prefix: " << tf_prefix);
-    newconfig.frame_id = tf::resolve(tf_prefix, newconfig.frame_id);*/
+    }
 
     if (running_ && (level & Levels::RECONFIGURE_CLOSE)) {
       // The device has to be closed to change these params
@@ -393,6 +367,7 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
       updateImageModeConfig(newconfig, feature_ptr_vec);
       updateROIConfig(newconfig, feature_ptr_vec);
       updateBandwidthConfig(newconfig, feature_ptr_vec);
+      updateGPIOConfig(newconfig, feature_ptr_vec);
       updateCameraInfo(newconfig);
     }
     camera_config_ = newconfig;
@@ -693,6 +668,39 @@ void VimbaROS::updatePixelFormatConfig(const Config& config,
   if(changed){
     ROS_INFO_STREAM("New PixelFormat config: "
       << "\n\tPixelFormat : " << config.pixel_format << " was " << camera_config_.pixel_format);
+  }
+}
+
+/** Change the GPIO configuration */
+void VimbaROS::updateGPIOConfig(const Config& config,
+                                     FeaturePtrVector feature_ptr_vec) {
+  bool changed = false;
+  if (config.sync_in_selector
+      != camera_config_.sync_in_selector || first_run_) {
+    changed = true;
+    setFeatureValue("SyncInSelector", config.sync_in_selector.c_str());
+  }
+  if (config.sync_out_polarity
+      != camera_config_.sync_out_polarity || first_run_) {
+    changed = true;
+    setFeatureValue("SyncOutPolarity", config.sync_out_polarity.c_str());
+  }
+  if (config.sync_out_selector
+      != camera_config_.sync_out_selector || first_run_) {
+    changed = true;
+    setFeatureValue("SyncOutSelector", config.sync_out_selector.c_str());
+  }
+  if (config.sync_out_source
+      != camera_config_.sync_out_source || first_run_) {
+    changed = true;
+    setFeatureValue("SyncOutSource", config.sync_out_source.c_str());
+  }
+  if(changed){
+    ROS_INFO_STREAM("New Bandwidth config: "
+      << "\n\tSyncInSelector  : " << config.sync_in_selector  << " was " << camera_config_.sync_in_selector
+      << "\n\tSyncOutPolarity : " << config.sync_out_polarity << " was " << camera_config_.sync_out_polarity
+      << "\n\tSyncOutSelector : " << config.sync_out_selector << " was " << camera_config_.sync_out_selector
+      << "\n\tSyncOutSource   : " << config.sync_out_source   << " was " << camera_config_.sync_out_source);
   }
 }
 

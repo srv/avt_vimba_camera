@@ -166,6 +166,7 @@ class VimbaROS {
     void updateROIConfig(Config& config, FeaturePtrVector feature_ptr_vec);
     void updateBandwidthConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updatePixelFormatConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
+    void updateGPIOConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
 
 
     void start(Config& config);
@@ -174,9 +175,6 @@ class VimbaROS {
     bool frameToImage(const FramePtr vimba_frame_ptr, sensor_msgs::Image& image);
 
 
-    // Service callback for setting calibration.
-    bool setCameraInfo(sensor_msgs::SetCameraInfo::Request& req,
-                       sensor_msgs::SetCameraInfo::Response& rsp);
     // Configure camera info
     void updateCameraInfo(const Config& config);
     // Dynamic Reconfigure Callback
