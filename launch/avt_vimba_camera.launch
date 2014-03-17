@@ -5,8 +5,8 @@
 	</group>
 
 	<node name="camera" pkg="avt_vimba_camera" type="avt_vimba_camera_node" output="screen">
-		<param name="guid" value="50-0503328910"/>
-		<param name="ip_address" value="192.168.3.103"/>
+		<param name="guid" value="50-0503343289"/>
+		<param name="ip_address" value=""/>
 		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibration.yaml"/>
 		<param name="frame_id" value="camera"/>
 		<param name="trig_timestamp_topic" value=""/>
@@ -20,7 +20,7 @@
 			6. FixedRate
 			7. Software
 		-->
-		<param name="trigger_mode" value="Freerun"/>
+		<param name="trigger_mode" value="FixedRate"/>
 
 		<!-- Acquisition mode:
 			1. Continuous
@@ -31,7 +31,7 @@
 		<param name="acquisition_mode" value="Continuous"/>
 
 		<!-- Acquisition rate in fps -->
-		<param name="acquisition_rate" value="2"/>
+		<param name="acquisition_rate" value="30"/>
 
 		<!-- Pixel format:
 			1. Mono8
@@ -54,16 +54,16 @@
 			2. Once
 			3. Continuous
 		-->
-		<param name="auto_exposure" value="Continuous"/>
-		<param name="auto_gain" value="Continuous"/>
-		<param name="auto_whitebalance" value="Continuous"/>
+		<param name="auto_exposure" value="Auto"/>
+		<param name="auto_gain" value="Auto"/>
+		<param name="auto_whitebalance" value="Auto"/>
 
 		<param name="binning_x" value="1"/>
 		<param name="binning_y" value="1"/>
 		<param name="decimation_x" value="1"/>
 		<param name="decimation_y" value="1"/>
-		<param name="x_offset" value="266"/>
-		<param name="y_offset" value="308"/>
+		<param name="x_offset" value="8"/>
+		<param name="y_offset" value="9"/>
 		<param name="width" value="1920"/>
 		<param name="height" value="1440"/>
 
@@ -71,36 +71,3 @@
 	</node>
 
 </launch>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

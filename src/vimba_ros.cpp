@@ -32,6 +32,7 @@
 
 #include <avt_vimba_camera/vimba_ros.h>
 
+#include <ros/console.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/fill_image.h>
 
@@ -137,62 +138,132 @@ void VimbaROS::start(Config& config) {
 
   trigger_mode_int_ = getTriggerModeInt(trigger_mode_);
 
-  switch (trigger_mode_int_) {
-    case Freerun:
-    {
-      // Create a frame observer for this camera
-      vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
-                      boost::bind(&VimbaROS::frameCallback, this, _1));
+  if (trigger_mode_int_ == Freerun || trigger_mode_int_ == FixedRate || trigger_mode_int_ == SyncIn1) {
+    // Create a frame observer for this camera
+    vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
+                    boost::bind(&VimbaROS::frameCallback, this, _1));
 
-      // Setup the image publisher before the streaming
-      streaming_pub_ = it_.advertiseCamera("image_raw", 1);
+    // Setup the image publisher before the streaming
+    streaming_pub_ = it_.advertiseCamera("image_raw", 1);
 
-      // Start streaming
-      VmbErrorType err =
-        vimba_camera_ptr_->StartContinuousImageAcquisition(1,//num_frames_,
-                                  IFrameObserverPtr(vimba_frame_observer_ptr_));
-      if (VmbErrorSuccess == err){
-        ROS_INFO_STREAM("[AVT_Vimba_ROS]: StartContinuousImageAcquisition");
-      } else {
-        ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not StartContinuousImageAcquisition. "
-          << "\n Error: " << errorCodeToMessage(err));
-      }
-      break;
+    // Start streaming
+    VmbErrorType err =
+      vimba_camera_ptr_->StartContinuousImageAcquisition(1,//num_frames_,
+                                IFrameObserverPtr(vimba_frame_observer_ptr_));
+    if (VmbErrorSuccess == err){
+      ROS_INFO_STREAM("[AVT_Vimba_ROS]: StartContinuousImageAcquisition");
+    } else {
+      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not StartContinuousImageAcquisition. "
+        << "\n Error: " << errorCodeToMessage(err));
     }
-    /*case FixedRate:
-    {
-      // TODO(m)
-      break;
-    }
-    case Software:
-    {
-      // TODO(m)
-      break;
-    }
-    case SyncIn1:
-    {
-      // TODO(m)
-      break;
-    }*/
-    default:
-    {
-      ROS_ERROR_STREAM("Trigger mode " <<
+  } else if (trigger_mode_int_ == Software) {
+    vimba_camera_ptr_->Close();
+    poll_srv_ = polled_camera::advertise(nhp_, "request_image", &VimbaROS::pollCallback, this);
+  } else {
+    ROS_ERROR_STREAM("Trigger mode " <<
                        TriggerMode[trigger_mode_int_] <<
                        " not implemented.");
-    }
   }
-  running_ = true;
 }
 
 void VimbaROS::stop() {
   if (!running_) return;
 
   vimba_camera_ptr_->Close();  // Must stop camera before streaming_pub_.
-  //poll_srv_.shutdown();
+  poll_srv_.shutdown();
   //trigger_sub_.shutdown();
   streaming_pub_.shutdown();
 
   running_ = false;
+}
+
+void VimbaROS::pollCallback(polled_camera::GetPolledImage::Request& req,
+                            polled_camera::GetPolledImage::Response& rsp,
+                            sensor_msgs::Image& image,
+                            sensor_msgs::CameraInfo& info) {
+  if (trigger_mode_int_ != Software) {
+    rsp.success = false;
+    rsp.status_message = "Camera is not in software triggered mode";
+    return;
+  }
+
+  // open the camera
+  vimba_camera_ptr_ = openCamera(camera_config_.guid);
+
+  // configure it
+  configure(camera_config_,0);
+
+  ROS_INFO_STREAM("POLL CALLBACK CALLED");
+
+
+  FeaturePtrVector feature_ptr_vec;
+  VmbErrorType err = vimba_camera_ptr_->GetFeatures(feature_ptr_vec);
+  if (err == VmbErrorSuccess) {
+    // Region of interest configuration
+    // Make sure ROI fits in image
+    if (req.roi.x_offset || req.roi.y_offset || req.roi.width || req.roi.height) {
+      unsigned int left_x   = req.roi.x_offset / req.binning_x;
+      unsigned int top_y    = req.roi.y_offset / req.binning_y;
+      unsigned int right_x  = (req.roi.x_offset + req.roi.width  + req.binning_x - 1) / req.binning_x;
+      unsigned int bottom_y = (req.roi.y_offset + req.roi.height + req.binning_y - 1) / req.binning_y;
+      unsigned int width    = right_x - left_x;
+      unsigned int height   = bottom_y - top_y;
+      setFeatureValue("OffsetX", static_cast<VmbInt64_t>(left_x));
+      setFeatureValue("OffsetY", static_cast<VmbInt64_t>(top_y));
+      setFeatureValue("Width",   static_cast<VmbInt64_t>(width));
+      setFeatureValue("Height",  static_cast<VmbInt64_t>(height));
+    } else {
+      setFeatureValue("OffsetX", static_cast<VmbInt64_t>(0));
+      setFeatureValue("OffsetY", static_cast<VmbInt64_t>(0));
+      setFeatureValue("Width",   static_cast<VmbInt64_t>(vimba_camera_max_width_));
+      setFeatureValue("Height",  static_cast<VmbInt64_t>(vimba_camera_max_height_));
+    }
+  } else {
+    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not GetFeatures. "
+    << "\n Error: " << errorCodeToMessage(err));
+  }
+
+  ROS_INFO_STREAM("POLL CALLBACK CALLED: all features set");
+
+  // Zero duration means "no timeout"
+  VmbUint32_t VmbUint32_inf = 2e4-1;
+  unsigned long timeout = req.timeout.isZero() ? VmbUint32_inf : req.timeout.toNSec() / 1e6;
+  FramePtr frame;
+  //runCommand("TriggerSoftware");
+  err = vimba_camera_ptr_->AcquireSingleImage(frame, timeout);
+  ROS_INFO_STREAM("POLL CALLBACK CALLED: acquire single image");
+  if (err == VmbErrorSuccess) {
+    if (!frame) {
+      rsp.success = false;
+      rsp.status_message = "Failed to capture frame, may have timed out";
+      return;
+    } else {
+      //err = vimba_camera_ptr_->QueueFrame(frame);
+      if (err == VmbErrorSuccess) {
+        info = cinfo_->getCameraInfo();
+        if (!frameToImage(frame, image)) {
+          rsp.success = false;
+          rsp.status_message = "Captured frame but failed to process it";
+          return;
+        }
+        // do_rectify should be preserved from request
+        info.roi.do_rectify = req.roi.do_rectify;
+        rsp.success = true;
+        ROS_INFO_STREAM("POLL CALLBACK CALLED: DONE!");
+      }
+    }
+  }
+
+  if (err != VmbErrorSuccess){
+    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not AcquireSingleImage. "
+    << "\n Error: " << errorCodeToMessage(err));
+    rsp.success = false;
+    rsp.status_message = "AVT_Vimba_ROS error";
+    return;
+  }
+
+  // close the camera
+  vimba_camera_ptr_->Close();
 }
 
 void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
@@ -399,7 +470,7 @@ void VimbaROS::updateAcquisitionConfig(const Config& config,
   }
   if (config.trigger_delay != camera_config_.trigger_delay || first_run_) {
     changed = true;
-    setFeatureValue("TriggerDelay", config.trigger_delay);
+    setFeatureValue("TriggerDelayAbs", config.trigger_delay);
   }
   if(changed){
     ROS_INFO_STREAM("New Trigger config: "
@@ -407,7 +478,7 @@ void VimbaROS::updateAcquisitionConfig(const Config& config,
       << "\n\tAcquisitionFrameRateAbs : " << config.acquisition_rate   << " was " << camera_config_.acquisition_rate
       << "\n\tTriggerSource           : " << config.trigger_mode       << " was " << camera_config_.trigger_mode
       << "\n\tTriggerActivation       : " << config.trigger_activation << " was " << camera_config_.trigger_activation
-      << "\n\tTriggerDelay            : " << config.trigger_delay      << " was " << camera_config_.trigger_delay);
+      << "\n\tTriggerDelayAbs            : " << config.trigger_delay      << " was " << camera_config_.trigger_delay);
   }
 }
 
@@ -867,6 +938,28 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
 }
 
 
+// Template function to RUN a command
+bool VimbaROS::runCommand(const std::string& command_str) {
+  FeaturePtr feature_ptr;
+  if ( VmbErrorSuccess == vimba_camera_ptr_->GetFeatureByName( command_str.c_str(), feature_ptr ))
+  {
+    if ( VmbErrorSuccess == feature_ptr->RunCommand() )
+    {
+      bool is_command_done = false;
+      do
+      {
+        if ( VmbErrorSuccess != feature_ptr->IsCommandDone(is_command_done) )
+        {
+          break;
+        }
+        ROS_INFO_STREAM_THROTTLE(1,"Waiting for command " << command_str.c_str() << "...");
+      } while ( false == is_command_done );
+      ROS_INFO_STREAM("Command " << command_str.c_str() << " done!");
+    }
+  }
+}
+
+
 /** Translates Vimba error codes to readable error messages
 *
 * @param error Vimba error tyme
@@ -1011,7 +1104,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
 
     err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err){
-      //printAllCameraFeatures(camera);
+      printAllCameraFeatures(camera);
     } else {
       ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
         << "\n Error: " << errorCodeToMessage(err));
@@ -1020,6 +1113,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
     ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
       << "\n Error: " << errorCodeToMessage(err));
   }
+  running_ = true;
   return camera;
 }
 

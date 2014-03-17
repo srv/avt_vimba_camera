@@ -46,6 +46,7 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
+#include <polled_camera/publication_server.h>
 
 #include <string>
 #include <map>
@@ -111,8 +112,8 @@ class VimbaROS {
     image_transport::ImageTransport it_;
     // ROS Camera publisher
     image_transport::CameraPublisher streaming_pub_;
-    // ROS Service to set camera info for calibration
-    ros::ServiceServer set_camera_info_srv_;
+    // ROS Service to get images
+    polled_camera::PublicationServer poll_srv_;
     // Subscriber for input trigger time
     ros::Subscriber trigger_sub_;
 
@@ -157,6 +158,7 @@ class VimbaROS {
     template<typename T> bool getFeatureValue(const std::string& feature_str, T& val);
     bool getFeatureValue(const std::string& feature_str, std::string& val);
     template<typename T> bool setFeatureValue(const std::string& feature_str, const T& val);
+    bool runCommand(const std::string& command_str);
 
     void updateAcquisitionConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateExposureConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
@@ -172,6 +174,10 @@ class VimbaROS {
     void start(Config& config);
     void stop();
     void frameCallback(const FramePtr vimba_frame_ptr);
+    void pollCallback(polled_camera::GetPolledImage::Request& req,
+                      polled_camera::GetPolledImage::Response& rsp,
+                      sensor_msgs::Image& image,
+                      sensor_msgs::CameraInfo& info);
     bool frameToImage(const FramePtr vimba_frame_ptr, sensor_msgs::Image& image);
 
 
