@@ -145,9 +145,17 @@ endfunction()
 
 # architecture:
 target_architecture(ARCH)
-message(STATUS "[avt_vimba_sdk]: Architecture is: ${ARCH}")
-find_library(VIMBACPP NAMES "VimbaCPP" PATHS "lib/${ARCH}bit")
-message(STATUS "[avt_vimba_sdk]: ${VIMBACPP}")
+if("${ARCH}" STREQUAL i386)
+  message(STATUS "[avt_vimba_sdk]: Architecture is: ${ARCH} -> 32bit")
+  find_library(VIMBACPP NAMES "VimbaCPP" PATHS "lib/32bit")
+elseif("${ARCH}" STREQUAL x86_64)
+  message(STATUS "[avt_vimba_sdk]: Architecture is: ${ARCH} -> 64bit")
+  find_library(VIMBACPP NAMES "VimbaCPP" PATHS "lib/64bit")
+else()
+  message(FATAL_ERROR "[avt_vimba_sdk]: Architecture ${ARCH} not suported. Exiting...")  
+endif()
+message(STATUS "[avt_vimba_sdk]: Library path = ${VIMBACPP}")
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
