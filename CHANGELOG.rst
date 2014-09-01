@@ -2,8 +2,8 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.4 (2014-09-01)
+------------------
 * absolute path for libvimbacpp
 * changed version
 * bugfix re-release
