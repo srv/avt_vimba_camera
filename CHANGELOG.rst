@@ -2,6 +2,11 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* change to libvimba package
+* Contributors: Miquel Massot
+
 0.0.5 (2014-09-03)
 ------------------
 * add shared library as imported target
