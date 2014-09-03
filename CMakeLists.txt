@@ -139,16 +139,14 @@ endfunction()
 
 # architecture:
 target_architecture(ARCH)
+add_library( VimbaCPP SHARED IMPORTED )
 if("${ARCH}" STREQUAL i386)
-  message(STATUS "[avt_vimba_sdk]: Architecture is: ${ARCH} -> 32bit")
-  find_library(VIMBACPP NAMES VimbaCPP PATHS ${PROJECT_SOURCE_DIR}/lib/32bit NO_DEFAULT_PATH)
+  set_target_properties( VimbaCPP PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/lib/32bit/libVimbaCPP.so" )
 elseif("${ARCH}" STREQUAL x86_64)
-  message(STATUS "[avt_vimba_sdk]: Architecture is: ${ARCH} -> 64bit")
-  find_library(VIMBACPP NAMES VimbaCPP PATHS ${PROJECT_SOURCE_DIR}/lib/64bit NO_DEFAULT_PATH)
+  set_target_properties( VimbaCPP PROPERTIES IMPORTED_LOCATION "${PROJECT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so" )
 else()
   message(FATAL_ERROR "[avt_vimba_sdk]: Architecture ${ARCH} not suported. Exiting...")
 endif()
-message(STATUS "[avt_vimba_sdk]: Library path = ${VIMBACPP}")
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
@@ -178,7 +176,7 @@ src/frame_observer.cpp)
 add_dependencies(avt_vimba_camera_node ${PROJECT_NAME}_gencfg)
 
 target_link_libraries(avt_vimba_camera_node
-  ${VIMBACPP}
+  VimbaCPP
   ${catkin_LIBRARIES}
 )
 
