@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(avt_vimba_camera)
 
 find_package(catkin REQUIRED COMPONENTS
+  #libvimba
   camera_info_manager
   diagnostic_updater
   driver_base
@@ -12,8 +13,12 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   polled_camera
-  libvimba
 )
+
+#Get architecture
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(TargetArchitecture)
+target_architecture(ARCH)
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
@@ -30,19 +35,41 @@ catkin_package(
 ###########
 
 include_directories(
-  ${catkin_INCLUDE_DIRS} include
+  #${libvimba_INCLUDE_DIRS}
+  ${catkin_INCLUDE_DIRS}
+  include
 )
 
 add_executable(avt_vimba_camera_node
-src/avt_vimba_camera_node.cpp
-src/vimba_ros.cpp
-src/frame_observer.cpp)
-
-add_dependencies(avt_vimba_camera_node ${PROJECT_NAME}_gencfg)
-
-target_link_libraries(avt_vimba_camera_node
-  ${catkin_LIBRARIES}
+  src/avt_vimba_camera_node.cpp
+  src/vimba_ros.cpp
+  src/frame_observer.cpp
 )
+
+add_dependencies(avt_vimba_camera_node
+  ${PROJECT_NAME}_gencfg
+  #${libvimba_EXPORTED_TARGETS}
+)
+
+message("KKKKK ${CMAKE_CURRENT_SOURCE_DIR}")
+
+if("${ARCH}" STREQUAL i386)
+  target_link_libraries(avt_vimba_camera_node
+    ${catkin_LIBRARIES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaCPP.so
+  )
+elseif("${ARCH}" STREQUAL x86_64)
+  target_link_libraries(avt_vimba_camera_node
+    ${catkin_LIBRARIES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so
+  )
+else()
+  message(FATAL_ERROR "[libvimba]: Architecture ${ARCH} not suported. Exiting...")
+endif()
+
+
 
 #############
 ## Install ##
@@ -67,3 +94,17 @@ install(FILES
   launch/avt_vimba_camera.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
+
+if("${ARCH}" STREQUAL i386)
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaCPP.so
+    DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  )
+elseif("${ARCH}" STREQUAL x86_64)
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so
+    DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  )
+endif()
