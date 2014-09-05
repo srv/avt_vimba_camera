@@ -2,6 +2,11 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* readdition of vimba
+* Contributors: Miquel Massot
+
 0.0.7 (2014-09-04)
 ------------------
 * removed vimba headers

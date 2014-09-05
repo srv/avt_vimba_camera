@@ -51,8 +51,6 @@ add_dependencies(avt_vimba_camera_node
   #${libvimba_EXPORTED_TARGETS}
 )
 
-message("KKKKK ${CMAKE_CURRENT_SOURCE_DIR}")
-
 if("${ARCH}" STREQUAL i386)
   target_link_libraries(avt_vimba_camera_node
     ${catkin_LIBRARIES}
