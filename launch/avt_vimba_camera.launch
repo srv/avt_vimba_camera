@@ -20,7 +20,7 @@
 			6. FixedRate
 			7. Software
 		-->
-		<param name="trigger_mode" value="FixedRate"/>
+		<param name="trigger_source" value="FixedRate"/>
 
 		<!-- Acquisition mode:
 			1. Continuous

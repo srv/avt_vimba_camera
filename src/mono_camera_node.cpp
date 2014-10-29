@@ -3,7 +3,7 @@
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "avt_vimba_camera_node");
+	ros::init(argc, argv, "mono_camera_node");
 
   ros::NodeHandle nh;
   ros::NodeHandle nhp("~");

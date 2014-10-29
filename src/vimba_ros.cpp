@@ -39,6 +39,8 @@
 #include <boost/lexical_cast.hpp>
 #include <sstream>
 
+#define DEBUG_PRINTS 1
+
 namespace avt_vimba_camera {
 
 static const char* AutoMode[] = {"Off", "Once", "Continuous"};
@@ -46,10 +48,10 @@ static const char* TriggerMode[] = {
   "Freerun",
   "FixedRate",
   "Software",
-  "SyncIn1",
-  "SyncIn2",
-  "SyncIn3",
-  "SyncIn4" };
+  "Line1",
+  "Line2",
+  "Line3",
+  "Line4" };
 static const char* AcquisitionMode[] = {
   "Continuous",
   "SingleFrame",
@@ -130,15 +132,16 @@ void VimbaROS::start(Config& config) {
   updateROIConfig(config, feature_ptr_vec);
   updateBandwidthConfig(config, feature_ptr_vec);
   updatePixelFormatConfig(config, feature_ptr_vec);
+  updatePtpModeConfig(config, feature_ptr_vec);
   updateCameraInfo(config);
 
   /////////////////////////////////////////////////////////////////////////////
-  getFeatureValue("TriggerSource", trigger_mode_);
-  ROS_INFO_STREAM("[AVT_Vimba_ROS]: Trigger mode is " << trigger_mode_);
+  getFeatureValue("TriggerSource", trigger_source_);
+  ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: Trigger mode is " << trigger_source_);
 
-  trigger_mode_int_ = getTriggerModeInt(trigger_mode_);
+  trigger_source_int_ = getTriggerModeInt(trigger_source_);
 
-  if (trigger_mode_int_ == Freerun || trigger_mode_int_ == FixedRate || trigger_mode_int_ == SyncIn1) {
+  if (trigger_source_int_ == Freerun || trigger_source_int_ == FixedRate || trigger_source_int_ == SyncIn1) {
     // Create a frame observer for this camera
     vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
                     boost::bind(&VimbaROS::frameCallback, this, _1));
@@ -151,17 +154,17 @@ void VimbaROS::start(Config& config) {
       vimba_camera_ptr_->StartContinuousImageAcquisition(1,//num_frames_,
                                 IFrameObserverPtr(vimba_frame_observer_ptr_));
     if (VmbErrorSuccess == err){
-      ROS_INFO_STREAM("[AVT_Vimba_ROS]: StartContinuousImageAcquisition");
+      ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: StartContinuousImageAcquisition");
     } else {
-      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not StartContinuousImageAcquisition. "
+      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not StartContinuousImageAcquisition. "
         << "\n Error: " << errorCodeToMessage(err));
     }
-  } else if (trigger_mode_int_ == Software) {
+  } else if (trigger_source_int_ == Software) {
     vimba_camera_ptr_->Close();
     poll_srv_ = polled_camera::advertise(nhp_, "request_image", &VimbaROS::pollCallback, this);
   } else {
     ROS_ERROR_STREAM("Trigger mode " <<
-                       TriggerMode[trigger_mode_int_] <<
+                       TriggerMode[trigger_source_int_] <<
                        " not implemented.");
   }
 }
@@ -181,7 +184,7 @@ void VimbaROS::pollCallback(polled_camera::GetPolledImage::Request& req,
                             polled_camera::GetPolledImage::Response& rsp,
                             sensor_msgs::Image& image,
                             sensor_msgs::CameraInfo& info) {
-  if (trigger_mode_int_ != Software) {
+  if (trigger_source_int_ != Software) {
     rsp.success = false;
     rsp.status_message = "Camera is not in software triggered mode";
     return;
@@ -219,7 +222,7 @@ void VimbaROS::pollCallback(polled_camera::GetPolledImage::Request& req,
       setFeatureValue("Height",  static_cast<VmbInt64_t>(vimba_camera_max_height_));
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not GetFeatures. "
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not GetFeatures. "
     << "\n Error: " << errorCodeToMessage(err));
   }
 
@@ -255,10 +258,10 @@ void VimbaROS::pollCallback(polled_camera::GetPolledImage::Request& req,
   }
 
   if (err != VmbErrorSuccess){
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not AcquireSingleImage. "
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not AcquireSingleImage. "
     << "\n Error: " << errorCodeToMessage(err));
     rsp.success = false;
-    rsp.status_message = "AVT_Vimba_ROS error";
+    rsp.status_message = "AVT VIMBA error";
     return;
   }
 
@@ -273,17 +276,18 @@ void VimbaROS::frameCallback(const FramePtr vimba_frame_ptr) {
   vimba_frame_ptr_ = vimba_frame_ptr;
 
   /// @todo Better trigger timestamp matching
-  // if ( trigger_mode_ == SyncIn1  && !trig_time_.isZero() ) {
+  // if ( trigger_source_ == SyncIn1  && !trig_time_.isZero() ) {
 
-  img.header.stamp = cam_info_.header.stamp = ros::Time::now();
-  //VmbUint64_t timestamp;
-  //vimba_frame_ptr->GetTimestamp(timestamp);
-  //ROS_INFO_STREAM("[AVT_Vimba_ROS]: NEW_FRAME Timestamp: " << timestamp);
+  VmbUint64_t timestamp;
+  vimba_frame_ptr->GetTimestamp(timestamp);
+  ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: NEW_FRAME Timestamp: " << timestamp);
 
-  img.header.frame_id = frame_id_.c_str();
+  ros::Time ros_time;
 
   if(streaming_pub_.getNumSubscribers() > 0){
     if (frameToImage(vimba_frame_ptr, img)){
+      img.header.frame_id = frame_id_.c_str();
+      cam_info_.header.stamp = img.header.stamp = ros_time.fromNSec(timestamp);
       streaming_pub_.publish(img, cam_info_); // add timestamp
     }
   }
@@ -353,8 +357,12 @@ bool VimbaROS::frameToImage(const FramePtr vimba_frame_ptr,
                                  width,
                                  step,
                                  buffer_ptr);
+    VmbUint64_t timestamp;
+    vimba_frame_ptr->GetTimestamp(timestamp);
+    ros::Time ros_time;
+    image.header.stamp = ros::Time::now();//ros_time.fromNSec(timestamp);
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not GetImage. "
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not GetImage. "
       << "\n Error: " << errorCodeToMessage(err));
   }
   return res;
@@ -408,7 +416,7 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
   //boost::mutex::scoped_lock lock(mutex_);
 
   try {
-    ROS_INFO("dynamic reconfigure level 0x%x", level);
+    //ROS_INFO("dynamic reconfigure level 0x%x", level);
 
 
     // resolve frame ID using tf_prefix parameter
@@ -439,6 +447,7 @@ void VimbaROS::configure(Config& newconfig, uint32_t level) {
       updateROIConfig(newconfig, feature_ptr_vec);
       updateBandwidthConfig(newconfig, feature_ptr_vec);
       updateGPIOConfig(newconfig, feature_ptr_vec);
+      updatePtpModeConfig(newconfig, feature_ptr_vec);
       updateCameraInfo(newconfig);
     }
     camera_config_ = newconfig;
@@ -462,7 +471,15 @@ void VimbaROS::updateAcquisitionConfig(const Config& config,
   }
   if (config.trigger_mode != camera_config_.trigger_mode || first_run_) {
     changed = true;
-    setFeatureValue("TriggerSource", config.trigger_mode.c_str());
+    setFeatureValue("TriggerMode", config.trigger_mode.c_str());
+  }
+  if (config.trigger_selector != camera_config_.trigger_selector || first_run_) {
+    changed = true;
+    setFeatureValue("TriggerSelector", config.trigger_selector.c_str());
+  }
+  if (config.trigger_source != camera_config_.trigger_source || first_run_) {
+    changed = true;
+    setFeatureValue("TriggerSource", config.trigger_source.c_str());
   }
   if (config.trigger_activation != camera_config_.trigger_activation || first_run_) {
     changed = true;
@@ -472,13 +489,15 @@ void VimbaROS::updateAcquisitionConfig(const Config& config,
     changed = true;
     setFeatureValue("TriggerDelayAbs", config.trigger_delay);
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Trigger config: "
       << "\n\tAcquisitionMode         : " << config.acquisition_mode   << " was " << camera_config_.acquisition_mode
       << "\n\tAcquisitionFrameRateAbs : " << config.acquisition_rate   << " was " << camera_config_.acquisition_rate
-      << "\n\tTriggerSource           : " << config.trigger_mode       << " was " << camera_config_.trigger_mode
+      << "\n\tTriggerMode             : " << config.trigger_mode       << " was " << camera_config_.trigger_mode
+      << "\n\tTriggerSource           : " << config.trigger_source     << " was " << camera_config_.trigger_source
+      << "\n\tTriggerSelector         : " << config.trigger_selector   << " was " << camera_config_.trigger_selector
       << "\n\tTriggerActivation       : " << config.trigger_activation << " was " << camera_config_.trigger_activation
-      << "\n\tTriggerDelayAbs            : " << config.trigger_delay      << " was " << camera_config_.trigger_delay);
+      << "\n\tTriggerDelayAbs         : " << config.trigger_delay      << " was " << camera_config_.trigger_delay);
   }
 }
 
@@ -524,7 +543,7 @@ void VimbaROS::updateExposureConfig(const Config& config,
     setFeatureValue("ExposureAutoTarget",
                     static_cast<VmbInt64_t>(config.exposure_auto_target));
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Exposure config: "
       << "\n\tExposureTimeAbs       : " << config.exposure               << " was " << camera_config_.exposure
       << "\n\tExposureAuto          : " << config.exposure_auto          << " was " << camera_config_.exposure_auto
@@ -577,7 +596,7 @@ void VimbaROS::updateGainConfig(const Config& config,
     changed = true;
     setFeatureValue("GainAutoRate", static_cast<VmbInt64_t>(config.gain_auto_target));
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Exposure config: "
       << "\n\tGain              : " << config.gain               << " was " << camera_config_.gain
       << "\n\tGainAuto          : " << config.gain_auto          << " was " << camera_config_.gain_auto
@@ -614,7 +633,7 @@ void VimbaROS::updateWhiteBalanceConfig(const Config& config,
     changed = true;
     setFeatureValue("BalanceWhiteAutoRate", static_cast<VmbInt64_t>(config.whitebalance_auto_rate));
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New ROI config: "
       << "\n\tBalanceRatioAbs           : " << config.balance_ratio_abs      << " was " << camera_config_.balance_ratio_abs
       << "\n\tBalanceRatioSelector      : " << config.balance_ratio_selector << " was " << camera_config_.balance_ratio_selector
@@ -622,6 +641,22 @@ void VimbaROS::updateWhiteBalanceConfig(const Config& config,
       << "\n\tBalanceWhiteAutoAdjustTol : " << config.whitebalance_auto_tol  << " was " << camera_config_.whitebalance_auto_tol
       << "\n\tBalanceWhiteAutoRate      : " << config.whitebalance_auto_rate << " was " << camera_config_.whitebalance_auto_rate);
   }
+}
+
+/** Change the Binning and Decimation configuration */
+void VimbaROS::updatePtpModeConfig(const Config& config,
+                                   FeaturePtrVector feature_ptr_vec) {
+  bool changed = false;
+  if (config.ptp_mode != camera_config_.ptp_mode || first_run_) {
+    changed = true;
+    setFeatureValue("PtpMode", config.ptp_mode.c_str());
+  }
+
+  if(changed && DEBUG_PRINTS){
+    ROS_INFO_STREAM("New PTP config: "
+      << "\n\tPtpMode                   : " << config.ptp_mode << " was " << camera_config_.ptp_mode);
+  }
+
 }
 
 /** Change the Binning and Decimation configuration */
@@ -645,7 +680,7 @@ void VimbaROS::updateImageModeConfig(const Config& config,
     changed = true;
     setFeatureValue("BinningVertical", static_cast<VmbInt64_t>(config.binning_y));
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Image config: "
       << "\n\tDecimationHorizontal : " << config.decimation_x << " was " << camera_config_.decimation_x
       << "\n\tDecimationVertical   : " << config.decimation_y << " was " << camera_config_.decimation_y
@@ -703,7 +738,7 @@ void VimbaROS::updateROIConfig(Config& config,
     setFeatureValue("Height", static_cast<VmbInt64_t>(config.height));
   }
 
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New ROI config: "
       << "\n\tOffsetX : " << config.roi_offset_x << " was " << camera_config_.roi_offset_x
       << "\n\tOffsetY : " << config.roi_offset_y << " was " << camera_config_.roi_offset_y
@@ -722,7 +757,7 @@ void VimbaROS::updateBandwidthConfig(const Config& config,
     setFeatureValue("StreamBytesPerSecond",
                     static_cast<VmbInt64_t>(config.stream_bytes_per_second));
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Bandwidth config: "
       << "\n\tStreamBytesPerSecond : " << config.stream_bytes_per_second << " was " << camera_config_.stream_bytes_per_second);
   }
@@ -736,7 +771,7 @@ void VimbaROS::updatePixelFormatConfig(const Config& config,
     changed = true;
     setFeatureValue("PixelFormat", config.pixel_format.c_str());
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New PixelFormat config: "
       << "\n\tPixelFormat : " << config.pixel_format << " was " << camera_config_.pixel_format);
   }
@@ -766,7 +801,7 @@ void VimbaROS::updateGPIOConfig(const Config& config,
     changed = true;
     setFeatureValue("SyncOutSource", config.sync_out_source.c_str());
   }
-  if(changed){
+  if(changed && DEBUG_PRINTS){
     ROS_INFO_STREAM("New Bandwidth config: "
       << "\n\tSyncInSelector  : " << config.sync_in_selector  << " was " << camera_config_.sync_in_selector
       << "\n\tSyncOutPolarity : " << config.sync_out_polarity << " was " << camera_config_.sync_out_polarity
@@ -823,14 +858,15 @@ bool VimbaROS::getFeatureValue(const std::string& feature_str, T& val) {
         }
       }
     } else {
-      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature "
+      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str);
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not get feature " << feature_str);
   }
-  ROS_INFO_STREAM("Asking for feature " << feature_str << " with datatype " << FeatureDataType[data_type] << " and value " << val);
+  if(DEBUG_PRINTS)
+    ROS_INFO_STREAM("Asking for feature " << feature_str << " with datatype " << FeatureDataType[data_type] << " and value " << val);
   return (VmbErrorSuccess == err);
 }
 
@@ -872,12 +908,12 @@ bool VimbaROS::getFeatureValue(const std::string& feature_str, std::string& val)
         }
       }
     } else {
-      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature "
+      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str);
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not get feature " << feature_str);
   }
   ROS_DEBUG_STREAM("Asking for feature " << feature_str << " with datatype " << FeatureDataType[data_type] << " and value " << val);
   return (VmbErrorSuccess == err);
@@ -906,32 +942,32 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
               if (available){
                 err = vimba_feature_ptr->SetValue(val);
               } else {
-                ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature "
+                ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
                                  << feature_str
                                  << " is available now.");
               }
             } else {
-              ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str <<
+              ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature " << feature_str <<
                 ": value unavailable\n\tERROR " << errorCodeToMessage(err));
             }
           } else {
             err = vimba_feature_ptr->SetValue(val);
           }
         } else {
-          ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str <<
+          ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature " << feature_str <<
             ": Bad data type\n\tERROR " << errorCodeToMessage(err));
         }
       } else {
-        ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature "
+        ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
                          << feature_str
                          << " is not writable.");
       }
     } else {
-      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Feature " << feature_str << ": ERROR " 
+      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature " << feature_str << ": ERROR " 
                        << errorCodeToMessage(err));
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get feature " << feature_str
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not get feature " << feature_str
       << "\n Error: " << errorCodeToMessage(err));
   }
   return (VmbErrorSuccess == err);
@@ -985,7 +1021,7 @@ void VimbaROS::listAvailableCameras(void) {
       cameras.end() != iter;
       ++iter) {
         if (VmbErrorSuccess == (*iter)->GetName(name)) {
-          ROS_INFO_STREAM("[AVT_Vimba_ROS]: Found camera: ");
+          ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: Found camera: ");
         }
         std::string strID;            // The ID of the cam
         std::string strName;          // The name of the cam
@@ -1093,7 +1129,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
     camera->GetInterfaceType(cam_int_type);
     err = camera->GetPermittedAccess(accessMode);
 
-    ROS_INFO_STREAM("[AVT_Vimba_ROS]: Opened camera with"
+    ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: Opened camera with"
     << "\n\t\t * Name     : " << cam_name
     << "\n\t\t * Model    : " << cam_model
     << "\n\t\t * ID       : " << cam_id
@@ -1104,13 +1140,13 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
 
     err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err){
-      printAllCameraFeatures(camera);
+      //printAllCameraFeatures(camera);
     } else {
-      ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
+      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not get camera " << id_str
         << "\n Error: " << errorCodeToMessage(err));
     }
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not get camera " << id_str
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not get camera " << id_str
       << "\n Error: " << errorCodeToMessage(err));
   }
   running_ = true;
@@ -1278,10 +1314,10 @@ void VimbaROS::initApi(void) {
   vimba_error_code_to_message_[VmbErrorMoreData]       = "More data returned than memory provided.";
 
   if (VmbErrorSuccess == vimba_system_.Startup()) {
-    ROS_INFO_STREAM("[AVT_Vimba_ROS]: AVT Vimba System initialized successfully");
+    ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: AVT Vimba System initialized successfully");
     listAvailableCameras();
   } else {
-    ROS_ERROR_STREAM("[AVT_Vimba_ROS]: Could not start Vimba system: "
+    ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not start Vimba system: "
       << errorCodeToMessage(vimba_system_.Startup()) );
   }
 }
