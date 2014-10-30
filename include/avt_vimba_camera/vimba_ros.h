@@ -159,6 +159,7 @@ class VimbaROS {
     bool getFeatureValue(const std::string& feature_str, std::string& val);
     template<typename T> bool setFeatureValue(const std::string& feature_str, const T& val);
     bool runCommand(const std::string& command_str);
+    bool runCommand(const std::string& command_str, CameraPtr camera);
 
     void updateAcquisitionConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateExposureConfig(const Config& config, FeaturePtrVector feature_ptr_vec);

@@ -979,8 +979,12 @@ bool VimbaROS::setFeatureValue(const std::string& feature_str, const T& val) {
 
 // Template function to RUN a command
 bool VimbaROS::runCommand(const std::string& command_str) {
+  return runCommand(command_str, vimba_camera_ptr_);
+}
+
+bool VimbaROS::runCommand(const std::string& command_str, CameraPtr camera) {
   FeaturePtr feature_ptr;
-  if ( VmbErrorSuccess == vimba_camera_ptr_->GetFeatureByName( command_str.c_str(), feature_ptr ))
+  if ( VmbErrorSuccess == camera->GetFeatureByName( command_str.c_str(), feature_ptr ))
   {
     if ( VmbErrorSuccess == feature_ptr->RunCommand() )
     {
@@ -1146,7 +1150,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
       // From the SynchronousGrab API example:
       // Set the GeV packet size to the highest possible value
       if ( cam_int_type == VmbInterfaceEthernet ){
-        runCommand("GVSPAdjustPacketSize");
+        runCommand("GVSPAdjustPacketSize", camera);
       }
       //printAllCameraFeatures(camera);
     } else {
