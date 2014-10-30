@@ -126,7 +126,7 @@ void VimbaROS::start(Config& config) {
   
   // From the SynchronousGrab API example:
   // Set the GeV packet size to the highest possible value
-  int cam_int_type;
+  VmbInterfaceType cam_int_type;
   vimba_camera_ptr_->GetInterfaceType(cam_int_type);
   if ( cam_int_type == VmbInterfaceEthernet ){
     runCommand("GVSPAdjustPacketSize");
