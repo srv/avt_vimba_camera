@@ -115,6 +115,9 @@ void VimbaROS::start(Config& config) {
     // Only guid available
     ROS_INFO_STREAM("Trying to open camera by ID: " << guid_str);
     vimba_camera_ptr_ = openCamera(guid_str);
+  } else {
+    // No identifying info (GUID and IP) are available
+    ROS_ERROR("Can't connect to the camera: at least GUID or IP need to be set.");
   }
 
   // Get all cam properties we need for initialization
