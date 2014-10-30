@@ -41,7 +41,7 @@ include_directories(
 )
 
 add_executable(avt_vimba_camera_node
-  src/avt_vimba_camera_node.cpp
+  src/mono_camera_node.cpp
   src/vimba_ros.cpp
   src/frame_observer.cpp
 )

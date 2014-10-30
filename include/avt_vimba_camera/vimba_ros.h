@@ -120,8 +120,8 @@ class VimbaROS {
     // ROS params
     int num_frames_;
     std::string frame_id_;
-    std::string trigger_mode_;
-    int trigger_mode_int_;
+    std::string trigger_source_;
+    int trigger_source_int_;
 
     // ROS messages
     typedef driver_base::SensorLevels Levels;
@@ -169,6 +169,7 @@ class VimbaROS {
     void updateBandwidthConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updatePixelFormatConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateGPIOConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
+    void updatePtpModeConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
 
 
     void start(Config& config);
