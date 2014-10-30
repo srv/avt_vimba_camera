@@ -54,9 +54,9 @@
 			2. Once
 			3. Continuous
 		-->
-		<param name="auto_exposure" value="Auto"/>
-		<param name="auto_gain" value="Auto"/>
-		<param name="auto_whitebalance" value="Auto"/>
+		<param name="exposure_auto" value="Continuous"/>
+		<param name="gain_auto" value="Continuous"/>
+		<param name="whitebalance_auto" value="Continuous"/>
 
 		<param name="binning_x" value="1"/>
 		<param name="binning_y" value="1"/>
