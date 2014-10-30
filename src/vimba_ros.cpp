@@ -1146,20 +1146,7 @@ CameraPtr VimbaROS::openCamera(std::string id_str) {
       // From the SynchronousGrab API example:
       // Set the GeV packet size to the highest possible value
       if ( cam_int_type == VmbInterfaceEthernet ){
-        FeaturePtr pCommandFeature;
-        if ( VmbErrorSuccess == camera->GetFeatureByName("GVSPAdjustPacketSize", pCommandFeature)){
-          if ( VmbErrorSuccess == pCommandFeature->RunCommand() ){
-            bool bIsCommandDone = false;
-            do {
-              err = pCommandFeature->IsCommandDone(bIsCommandDone);
-              if ( VmbErrorSuccess != err ){
-                ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Could not set GVSP Packet Size on camera " << id_str
-                  << "\n Error: " << errorCodeToMessage(err));
-                break;
-              }
-            } while ( false == bIsCommandDone );
-          }
-        }
+        runCommand("GVSPAdjustPacketSize");
       }
       //printAllCameraFeatures(camera);
     } else {
