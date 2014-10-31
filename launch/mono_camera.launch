@@ -4,7 +4,7 @@
 		<node name="image_proc" pkg="image_proc" type="image_proc"/>
 	</group>
 
-	<node name="camera" pkg="avt_vimba_camera" type="avt_vimba_camera_node" output="screen">
+	<node name="camera" pkg="avt_vimba_camera" type="mono_camera_node" output="screen">
 		<param name="guid" value="50-0503343290"/>
 		<param name="ip_address" value=""/>
 		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibration.yaml"/>
@@ -31,7 +31,7 @@
 		<param name="acquisition_mode" value="Continuous"/>
 
 		<!-- Acquisition rate in fps -->
-		<param name="acquisition_rate" value="30"/>
+		<param name="acquisition_rate" value="12"/>
 
 		<!-- Pixel format:
 			1. Mono8
@@ -54,9 +54,9 @@
 			2. Once
 			3. Continuous
 		-->
-		<param name="auto_exposure" value="Auto"/>
-		<param name="auto_gain" value="Auto"/>
-		<param name="auto_whitebalance" value="Auto"/>
+		<param name="exposure_auto" value="Continuous"/>
+		<param name="gain_auto" value="Continuous"/>
+		<param name="whitebalance_auto" value="Continuous"/>
 
 		<param name="binning_x" value="1"/>
 		<param name="binning_y" value="1"/>
