@@ -72,21 +72,21 @@ add_executable(mono_camera_node
 
 add_dependencies_and_linkings(mono_camera_node)
 
-# add_executable(stereo_camera_node
-#   src/nodes/stereo_camera_node.cpp
-#   src/stereo_camera.cpp
-#   src/avt_vimba_camera.cpp
-#   src/frame_observer.cpp
-# )
+add_executable(stereo_camera_node
+  src/nodes/stereo_camera_node.cpp
+  src/stereo_camera.cpp
+  src/avt_vimba_camera.cpp
+  src/frame_observer.cpp
+)
 
-# add_dependencies_and_linkings(stereo_camera_node)
+add_dependencies_and_linkings(stereo_camera_node)
 
 #############
 ## Install ##
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS mono_camera_node #stereo_camera_node
+install(TARGETS mono_camera_node stereo_camera_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
