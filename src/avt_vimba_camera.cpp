@@ -109,6 +109,14 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
     ROS_ERROR("Can't connect to the camera: at least GUID or IP need to be set.");
   }
 
+  // From the SynchronousGrab API example:
+  // Set the GeV packet size to the highest possible value
+  VmbInterfaceType cam_int_type;
+  vimba_camera_ptr_->GetInterfaceType(cam_int_type);
+  if ( cam_int_type == VmbInterfaceEthernet ){
+    runCommand("GVSPAdjustPacketSize");
+  }
+
   std::string trigger_source;
   getFeatureValue("TriggerSource", trigger_source);
   ROS_INFO_STREAM("[" << ros::this_node::getName()
