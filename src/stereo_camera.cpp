@@ -73,6 +73,10 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
+  nhp_.param("master_out_source", master_out_source_, std::string("Exposing"));
+  nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));
+  nhp_.param("slave_in_source", slave_in_source_, std::string("SyncIn1"));
+
   // Set camera info managers
   left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
   right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "right"),"right_optical",right_camera_info_url_));
@@ -153,6 +157,12 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
       left_cam_.start(left_ip_, left_guid_);
       right_cam_.start(right_ip_, right_guid_);
       left_cam_.updateConfig(newconfig);
+      // Left camera is considered MASTER and right SLAVE
+      // The configuration is changed in Reconfigure STOP, as written in
+      // the cfg file
+      newconfig.sync_out_source = master_out_source_;
+      newconfig.trigger_source = slave_trigger_source_;
+      newconfig.sync_in_selector = slave_in_source_;
       right_cam_.updateConfig(newconfig);
     } else {
       // only change those params that can be changed while running

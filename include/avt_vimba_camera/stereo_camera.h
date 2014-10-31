@@ -64,6 +64,9 @@ class StereoCamera {
   std::string right_guid_;
   std::string left_camera_info_url_;
   std::string right_camera_info_url_;
+  std::string master_out_source_;
+  std::string slave_trigger_source_;
+  std::string slave_in_source_;
 
   // Node handles
   ros::NodeHandle nh_;

@@ -104,6 +104,9 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
     // Only guid available
     ROS_INFO_STREAM("Trying to open camera by ID: " << guid_str);
     vimba_camera_ptr_ = openCamera(guid_str);
+  } else {
+    // No identifying info (GUID and IP) are available
+    ROS_ERROR("Can't connect to the camera: at least GUID or IP need to be set.");
   }
 
   std::string trigger_source;
@@ -151,6 +154,8 @@ void AvtVimbaCamera::updateConfig(Config& config) {
   updateBandwidthConfig(config);
   updateGPIOConfig(config);
   updatePtpModeConfig(config);
+  updatePixelFormatConfig(config);
+  updateAcquisitionConfig(config);
   config_ = config;
 }
 
