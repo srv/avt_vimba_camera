@@ -139,6 +139,10 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
 }
 
 void AvtVimbaCamera::updateConfig(Config& config) {
+  if (first_run_) {
+    config_ = config;
+    first_run_ = false;
+  }
   updateExposureConfig(config);
   updateGainConfig(config);
   updateWhiteBalanceConfig(config);
@@ -784,7 +788,6 @@ void AvtVimbaCamera::updatePtpModeConfig(Config& config) {
     ROS_INFO_STREAM("New PTP config: "
       << "\n\tPtpMode                   : " << config.ptp_mode << " was " << config_.ptp_mode);
   }
-
 }
 
 /** Change the Binning and Decimation configuration */
