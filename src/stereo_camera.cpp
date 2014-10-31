@@ -73,17 +73,17 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
+  double max_allowed_time_error_double;
+  nhp_.param("max_allowed_time_error", max_sec_sync_error_, 0.05);  // time in seconcs
+
   nhp_.param("master_out_source", master_out_source_, std::string("Exposing"));
   nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));
   nhp_.param("slave_in_source", slave_in_source_, std::string("SyncIn1"));
+  nhp_.param("show_debug_prints", show_debug_prints_, false);
 
   // Set camera info managers
   left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
   right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "right"),"right_optical",right_camera_info_url_));
-
-  // Start the cameras
-  left_cam_.start(left_ip_, left_guid_);
-  right_cam_.start(right_ip_, right_guid_);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
@@ -98,12 +98,17 @@ StereoCamera::~StereoCamera() {
 
 void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
+  ROS_INFO("left frame callback");
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      sensor_msgs::CameraInfo ci = left_info_man_->getCameraInfo();
-      ci.header.stamp = img.header.stamp = ros_time;
-      left_pub_.publish(img, ci);
+      // sensor_msgs::CameraInfo ci = left_info_man_->getCameraInfo();
+      // ci.header.stamp = img.header.stamp = ros_time;
+      // left_pub_.publish(img, ci);
+      left_img_ = img;
+      left_ready_ = true;
+      left_time_ = ros_time;
+      sync();
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
@@ -113,15 +118,40 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
+  ROS_INFO("right frame callback");
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      sensor_msgs::CameraInfo ci = right_info_man_->getCameraInfo();
-      ci.header.stamp = img.header.stamp = ros_time;
-      right_pub_.publish(img, ci);
+      // sensor_msgs::CameraInfo ci = right_info_man_->getCameraInfo();
+      // ci.header.stamp = img.header.stamp = ros_time;
+      // right_pub_.publish(img, ci);
+      right_img_ = img;
+      right_ready_ = true;
+      right_time_ = ros_time;
+      sync();
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
+    }
+  }
+}
+
+void StereoCamera::sync(void) {
+  if (left_ready_ && right_ready_) {
+    if( abs(left_time_.toSec() - right_time_.toSec()) <= max_sec_sync_error_ ) {
+      ROS_INFO("KK SYNC");
+      ros::Time ros_time = ros::Time::now();
+      sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+      sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+      
+      lci.header.stamp = ros_time;
+      left_img_.header.stamp = ros_time;
+      rci.header.stamp = ros_time;
+      right_img_.header.stamp = ros_time;
+      left_pub_.publish(left_img_, lci);
+      right_pub_.publish(right_img_, rci);
+      right_ready_ = false;
+      left_ready_ = false;
     }
   }
 }
@@ -136,39 +166,31 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
 *               changed parameters (0xffffffff on initial call)
 **/
 void StereoCamera::configure(Config& newconfig, uint32_t level) {
+
+  Config left_config = newconfig;
+  Config right_config = newconfig;
+
+  // Left camera is considered MASTER and right SLAVE
+  left_config.sync_out_source = master_out_source_;
+  right_config.trigger_source = slave_trigger_source_;
+  right_config.sync_in_selector = slave_in_source_;
+
   try {
     // resolve frame ID using tf_prefix parameter
-    if (newconfig.frame_id == "") {
-      newconfig.frame_id = "stereo";
+    left_config.frame_id  = "left_optical";
+    right_config.frame_id = "right_optical";
+
+    // The camera already stops & starts acquisition
+    // so there's no problem on changing any feature.
+    if (!left_cam_.isOpened()) {
+      left_cam_.start(left_ip_, left_guid_, show_debug_prints_);
+    }
+    if (!right_cam_.isOpened()) {
+      right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
     }
 
-    if (level & driver_base::SensorLevels::RECONFIGURE_CLOSE) {
-      // The device has to be closed to change these params
-      left_cam_.stop();
-      right_cam_.stop();
-      left_cam_.start(left_ip_, left_guid_);
-      right_cam_.start(right_ip_, right_guid_);
-      left_cam_.updateConfig(newconfig);
-      right_cam_.updateConfig(newconfig);
-    } else if (level & driver_base::SensorLevels::RECONFIGURE_STOP) {
-      // The device has to stop streaming to change these params
-      left_cam_.stop();
-      right_cam_.stop();
-      left_cam_.start(left_ip_, left_guid_);
-      right_cam_.start(right_ip_, right_guid_);
-      left_cam_.updateConfig(newconfig);
-      // Left camera is considered MASTER and right SLAVE
-      // The configuration is changed in Reconfigure STOP, as written in
-      // the cfg file
-      newconfig.sync_out_source = master_out_source_;
-      newconfig.trigger_source = slave_trigger_source_;
-      newconfig.sync_in_selector = slave_in_source_;
-      right_cam_.updateConfig(newconfig);
-    } else {
-      // only change those params that can be changed while running
-      left_cam_.updateConfig(newconfig);
-      right_cam_.updateConfig(newconfig);
-    }
+    left_cam_.updateConfig(left_config);
+    right_cam_.updateConfig(right_config);
     updateCameraInfo(newconfig);
   } catch (const std::exception& e) {
     ROS_ERROR_STREAM("Error reconfiguring avt_vimba_camera node : " << e.what());
@@ -176,6 +198,7 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
 }
 
 void StereoCamera::updateCameraInfo(const Config& config) {
+  ROS_INFO("KK updateCameraInfo");
   // Get camera_info from the manager
   sensor_msgs::CameraInfo left_ci = left_info_man_->getCameraInfo();
   sensor_msgs::CameraInfo right_ci = right_info_man_->getCameraInfo();
@@ -206,24 +229,28 @@ void StereoCamera::updateCameraInfo(const Config& config) {
   right_ci.roi.height   = config.roi_height;
   right_ci.roi.width    = config.roi_width;
 
+  std::string left_camera_info_url, right_camera_info_url;
+  nhp_.getParam("left_camera_info_url", left_camera_info_url);
+  nhp_.getParam("right_camera_info_url", right_camera_info_url);
+
   // set the new URL and load CameraInfo (if any) from it
-  if (config.camera_info_url != left_camera_info_url_) {
+  if (left_camera_info_url != left_camera_info_url_) {
     left_info_man_->setCameraName(config.frame_id);
-    if (left_info_man_->validateURL(config.camera_info_url)) {
-      left_info_man_->loadCameraInfo(config.camera_info_url);
+    if (left_info_man_->validateURL(left_camera_info_url)) {
+      left_info_man_->loadCameraInfo(left_camera_info_url);
       left_ci = left_info_man_->getCameraInfo();
     } else {
-      ROS_WARN_STREAM("Camera info URL not valid: " << config.camera_info_url);
+      ROS_WARN_STREAM("Camera info URL not valid: " << left_camera_info_url);
     }
   }
 
-  if (config.camera_info_url != right_camera_info_url_) {
+  if (right_camera_info_url != right_camera_info_url_) {
     right_info_man_->setCameraName(config.frame_id);
-    if (right_info_man_->validateURL(config.camera_info_url)) {
-      right_info_man_->loadCameraInfo(config.camera_info_url);
+    if (right_info_man_->validateURL(right_camera_info_url)) {
+      right_info_man_->loadCameraInfo(right_camera_info_url);
       right_ci = right_info_man_->getCameraInfo();
     } else {
-      ROS_WARN_STREAM("Camera info URL not valid: " << config.camera_info_url);
+      ROS_WARN_STREAM("Camera info URL not valid: " << right_camera_info_url);
     }
   }
 

@@ -40,6 +40,7 @@
 #include <avt_vimba_camera/avt_vimba_api.h>
 
 #include <boost/function.hpp>
+#include <boost/thread.hpp>
 
 #include <string>
 
@@ -63,7 +64,7 @@ enum FrameStartTriggerMode {
 class AvtVimbaCamera {
  public:
   AvtVimbaCamera();
-  void start(std::string ip_str, std::string guid_str);
+  void start(std::string ip_str, std::string guid_str, bool debug_prints = true);
   void stop();
 
   CameraPtr getCameraPtr(void) {
@@ -83,6 +84,9 @@ class AvtVimbaCamera {
 
   typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
   void updateConfig(Config& config);
+  void startImaging(void);
+  void stopImaging(void);
+  bool isOpened(void) { return opened_; }
 
  private:
   Config config_;
@@ -99,8 +103,13 @@ class AvtVimbaCamera {
   // The max height
   VmbInt64_t vimba_camera_max_height_;
 
-  bool running_;
-  bool first_run_;
+  // Mutex
+  boost::mutex config_mutex_;
+
+  bool opened_;
+  bool imaging_;
+  bool on_init_;
+  bool show_debug_prints_;
 
   // ROS params
   int num_frames_;

@@ -214,11 +214,11 @@ class AvtVimbaApi {
           {
               ROS_ERROR_STREAM("[Could not get interface ID. Error code: " << err << "]");
           }
-          ROS_INFO_STREAM("\t\t/// Camera Name: " << strName);
-          ROS_INFO_STREAM("\t\t/// Model Name: " << strModelname);
-          ROS_INFO_STREAM("\t\t/// Camera ID: " << strID);
-          ROS_INFO_STREAM("\t\t/// Serial Number: " << strSerialNumber);
-          ROS_INFO_STREAM("\t\t/// @ Interface ID: " << strInterfaceID);
+          ROS_INFO_STREAM("\t/// Camera Name: " << strName);
+          ROS_INFO_STREAM("\t/// Model Name: " << strModelname);
+          ROS_INFO_STREAM("\t/// Camera ID: " << strID);
+          ROS_INFO_STREAM("\t/// Serial Number: " << strSerialNumber);
+          ROS_INFO_STREAM("\t/// @ Interface ID: " << strInterfaceID);
 
         }
       }

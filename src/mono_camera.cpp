@@ -56,17 +56,22 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   // Set the image publisher before the streaming
   pub_  = it_.advertiseCamera("image_raw",  1);
 
-  // Set camera info manager
-  info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_));
-
   // Set the frame callback
   cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
 
-  // Start the camera
+  // Set the params
   nhp_.param("ip", ip_, std::string(""));
   nhp_.param("guid", guid_, std::string(""));
-  nhp_.param("camera_info_url", camera_info_url_, std::string(""));
-  cam_.start(ip_, guid_);
+  nhp_.param("camera_info_url", camera_info_url_, std::string(""));  
+  std::string frame_id;
+  nhp_.param("frame_id", frame_id, std::string(""));  
+  nhp_.param("show_debug_prints", show_debug_prints_, false);
+
+  // Set camera info manager
+  info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
+
+  // Start the camera
+  // cam_.start(ip_, guid_);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
@@ -79,6 +84,7 @@ MonoCamera::~MonoCamera(void) {
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
+  ROS_INFO("Frame callback entered");
   if (pub_.getNumSubscribers() > 0) {
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)) {
@@ -106,19 +112,11 @@ void MonoCamera::configure(Config& newconfig, uint32_t level) {
     if (newconfig.frame_id == "") {
       newconfig.frame_id = "camera";
     }
-    // The device has to be closed to change these params
-    if (level & driver_base::SensorLevels::RECONFIGURE_CLOSE) {
-      cam_.stop();
-      cam_.start(ip_, guid_);
-      cam_.updateConfig(newconfig);
-    // The device has to stop streaming to change these params
-    } else if (level & driver_base::SensorLevels::RECONFIGURE_STOP) {
-      cam_.stop();
-      cam_.start(ip_, guid_);
-      cam_.updateConfig(newconfig);
-    } else {
-      cam_.updateConfig(newconfig);
-    }
+    // The camera already stops & starts acquisition
+    // so there's no problem on changing any feature.
+    if (!cam_.isOpened())
+      cam_.start(ip_, guid_, show_debug_prints_);
+    cam_.updateConfig(newconfig);
     updateCameraInfo(newconfig);
   } catch (const std::exception& e) {
     ROS_ERROR_STREAM("Error reconfiguring mono_camera node : " << e.what());
@@ -146,13 +144,15 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   ci.roi.width    = config.roi_width;
 
   // set the new URL and load CameraInfo (if any) from it
-  if (config.camera_info_url != camera_info_url_) {
+  std::string camera_info_url;
+  nhp_.getParam("camera_info_url", camera_info_url);  
+  if (camera_info_url != camera_info_url_) {
     info_man_->setCameraName(config.frame_id);
-    if (info_man_->validateURL(config.camera_info_url)) {
-      info_man_->loadCameraInfo(config.camera_info_url);
+    if (info_man_->validateURL(camera_info_url)) {
+      info_man_->loadCameraInfo(camera_info_url);
       ci = info_man_->getCameraInfo();
     } else {
-      ROS_WARN_STREAM("Camera info URL not valid: " << config.camera_info_url);
+      ROS_WARN_STREAM("Camera info URL not valid: " << camera_info_url);
     }
   }
 

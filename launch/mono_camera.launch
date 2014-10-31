@@ -7,9 +7,10 @@
 	<node name="camera" pkg="avt_vimba_camera" type="mono_camera_node" output="screen">
 		<param name="guid" value="50-0503343290"/>
 		<param name="ip_address" value=""/>
-		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibration.yaml"/>
-		<param name="frame_id" value="camera"/>
+		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343290.yaml"/>
+		<param name="frame_id" value="left_optical"/>
 		<param name="trig_timestamp_topic" value=""/>
+		<param name="show_debug_prints" value="true"/>
 
 		<!-- Trigger mode:
 			1. Freerun

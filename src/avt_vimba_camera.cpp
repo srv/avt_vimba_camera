@@ -39,8 +39,6 @@
 #include <boost/lexical_cast.hpp>
 #include <sstream>
 
-#define DEBUG_PRINTS 1
-
 namespace avt_vimba_camera {
 
 static const char* AutoMode[] = {
@@ -82,12 +80,16 @@ static const char* FeatureDataType[] = {
 
 AvtVimbaCamera::AvtVimbaCamera() {
   // Init global variables
-  running_ = false;
-  first_run_ = true;
+  opened_ = false;   // camera connected to the api
+  imaging_ = false;  // capturing frames
+  on_init_ = true;   // on initialization phase
+  show_debug_prints_ = false;
 }
 
-void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
-  if (running_) return;
+void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_prints) {
+  if (opened_) return;
+
+  show_debug_prints_ = debug_prints;
 
   // Determine which camera to use. Try IP first
   if (!ip_str.empty()) {
@@ -110,7 +112,7 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
   }
 
   // From the SynchronousGrab API example:
-  // Set the GeV packet size to the highest possible value
+  // TODO Set the GeV packet size to the highest possible value
   VmbInterfaceType cam_int_type;
   vimba_camera_ptr_->GetInterfaceType(cam_int_type);
   if ( cam_int_type == VmbInterfaceEthernet ){
@@ -121,7 +123,6 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
   getFeatureValue("TriggerSource", trigger_source);
   ROS_INFO_STREAM("[" << ros::this_node::getName()
                   << "]: Trigger mode is " << trigger_source);
-
   int trigger_source_int = getTriggerModeInt(trigger_source);
 
   if (trigger_source_int == Freerun   ||
@@ -130,18 +131,6 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
     // Create a frame observer for this camera
     vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
       boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1));
-    // Start streaming
-    VmbErrorType err =
-      vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
-      IFrameObserverPtr(vimba_frame_observer_ptr_));
-    if (VmbErrorSuccess == err) {
-      ROS_INFO_STREAM("[" << ros::this_node::getName()
-        << "]: Starting continuous image acquisition...");
-    } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName()
-        << "]: Could not start continuous image acquisition. "
-        << "\n Error: " << api_.errorCodeToMessage(err));
-    }
   } else {
     ROS_ERROR_STREAM("Trigger mode " <<
                     TriggerMode[trigger_source_int] <<
@@ -149,11 +138,53 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str) {
   }
 }
 
-void AvtVimbaCamera::updateConfig(Config& config) {
-  if (first_run_) {
-    config_ = config;
-    first_run_ = false;
+void AvtVimbaCamera::startImaging(void) {
+  if (!imaging_) {
+    // Start streaming
+    VmbErrorType err =
+      vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
+      IFrameObserverPtr(vimba_frame_observer_ptr_));
+    if (VmbErrorSuccess == err) {
+      ROS_INFO_STREAM("[" << ros::this_node::getName()
+        << "]: Starting continuous image acquisition...");
+      imaging_ = true;
+    } else {
+      ROS_ERROR_STREAM("[" << ros::this_node::getName()
+        << "]: Could not start continuous image acquisition. "
+        << "\n Error: " << api_.errorCodeToMessage(err));
+    }
+  } else {
+    ROS_WARN("Start imaging called, but the camera is already imaging.");
   }
+}
+
+void AvtVimbaCamera::stopImaging(void) {
+  if (imaging_ || on_init_) {
+    VmbErrorType err =
+      vimba_camera_ptr_->StopContinuousImageAcquisition();
+    if (VmbErrorSuccess == err) {
+      ROS_INFO_STREAM("[" << ros::this_node::getName()
+        << "]: Acquisition stoppped...");
+      imaging_ = false;
+    } else {
+      ROS_ERROR_STREAM("[" << ros::this_node::getName()
+        << "]: Could not stop image acquisition. "
+        << "\n Error: " << api_.errorCodeToMessage(err));
+    }
+  } else {
+    ROS_WARN("Stop imaging called, but the camera is already stopped.");
+  }
+}
+
+void AvtVimbaCamera::updateConfig(Config& config) {
+  boost::mutex::scoped_lock lock(config_mutex_);
+  
+  stopImaging();  
+
+  if (on_init_) {
+    config_ = config;
+  }
+  ROS_INFO_STREAM("Updating configuration for camera " << config.frame_id);
   updateExposureConfig(config);
   updateGainConfig(config);
   updateWhiteBalanceConfig(config);
@@ -165,12 +196,19 @@ void AvtVimbaCamera::updateConfig(Config& config) {
   updatePixelFormatConfig(config);
   updateAcquisitionConfig(config);
   config_ = config;
+
+  if (on_init_) {
+    on_init_ = false;
+    
+  }
+
+  startImaging();
 }
 
 void AvtVimbaCamera::stop() {
-  if (!running_) return;
+  if (!opened_) return;
   vimba_camera_ptr_->Close();
-  running_ = false;
+  opened_ = false;
 }
 
 CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
@@ -205,7 +243,8 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
 
     err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err) {
-      // printAllCameraFeatures(camera);
+      //printAllCameraFeatures(camera);
+      opened_ = true;
     } else {
       ROS_ERROR_STREAM("[" << ros::this_node::getName()
         << "]: Could not get camera " << id_str
@@ -216,11 +255,11 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
       << "]: Could not get camera " << id_str
       << "\n Error: " << api_.errorCodeToMessage(err));
   }
-  running_ = true;
   return camera;
 }
 
 void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
+  boost::mutex::scoped_lock lock(config_mutex_);
   // Call the callback implemented by other classes
   userFrameCallback(vimba_frame_ptr);
 
@@ -283,7 +322,7 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
     ROS_ERROR_STREAM("[" << ros::this_node::getName()
       << "]: Could not get feature " << feature_str);
   }
-  if (DEBUG_PRINTS)
+  if (show_debug_prints_)
     ROS_INFO_STREAM("Asking for feature "
       << feature_str << " with datatype "
       << FeatureDataType[data_type]
@@ -609,37 +648,45 @@ void AvtVimbaCamera::printAllCameraFeatures(CameraPtr camera) {
 /** Change the Trigger configuration */
 void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
   bool changed = false;
-  if (config.acquisition_mode != config_.acquisition_mode || first_run_) {
+  if (config.acquisition_mode != config_.acquisition_mode || on_init_) {
     changed = true;
     setFeatureValue("AcquisitionMode", config.acquisition_mode.c_str());
   }
-  if (config.acquisition_rate != config_.acquisition_rate || first_run_) {
+  if (config.acquisition_rate != config_.acquisition_rate || on_init_) {
     changed = true;
+    double acquisition_frame_rate_limit;
+    getFeatureValue("AcquisitionFrameRateLimit", acquisition_frame_rate_limit);
+    if (acquisition_frame_rate_limit < config.acquisition_rate) {
+      double rate = (double)floor(acquisition_frame_rate_limit);
+      ROS_WARN_STREAM("Max frame rate allowed: " << acquisition_frame_rate_limit 
+                      << ". Setting " << rate << "...");
+      config.acquisition_rate = rate;
+    }
     setFeatureValue("AcquisitionFrameRateAbs",
                     static_cast<float>(config.acquisition_rate));
   }
-  if (config.trigger_mode != config_.trigger_mode || first_run_) {
+  if (config.trigger_mode != config_.trigger_mode || on_init_) {
     changed = true;
     setFeatureValue("TriggerMode", config.trigger_mode.c_str());
   }
-  if (config.trigger_selector != config_.trigger_selector || first_run_) {
+  if (config.trigger_selector != config_.trigger_selector || on_init_) {
     changed = true;
     setFeatureValue("TriggerSelector", config.trigger_selector.c_str());
   }
-  if (config.trigger_source != config_.trigger_source || first_run_) {
+  if (config.trigger_source != config_.trigger_source || on_init_) {
     changed = true;
     setFeatureValue("TriggerSource", config.trigger_source.c_str());
   }
-  if (config.trigger_activation != config_.trigger_activation || first_run_) {
+  if (config.trigger_activation != config_.trigger_activation || on_init_) {
     changed = true;
     setFeatureValue("TriggerActivation", config.trigger_activation.c_str());
   }
-  if (config.trigger_delay != config_.trigger_delay || first_run_) {
+  if (config.trigger_delay != config_.trigger_delay || on_init_) {
     changed = true;
     setFeatureValue("TriggerDelayAbs", config.trigger_delay);
   }
-  if(changed && DEBUG_PRINTS){
-    ROS_INFO_STREAM("New Trigger config: "
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New Acquisition and Trigger config: "
       << "\n\tAcquisitionMode         : " << config.acquisition_mode   << " was " << config_.acquisition_mode
       << "\n\tAcquisitionFrameRateAbs : " << config.acquisition_rate   << " was " << config_.acquisition_rate
       << "\n\tTriggerMode             : " << config.trigger_mode       << " was " << config_.trigger_mode
@@ -653,45 +700,45 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
 /** Change the Exposure configuration */
 void AvtVimbaCamera::updateExposureConfig(Config& config) {
   bool changed = false;
-  if (config.exposure != config_.exposure || first_run_) {
+  if (config.exposure != config_.exposure || on_init_) {
     changed = true;
     setFeatureValue("ExposureTimeAbs", static_cast<float>(config.exposure));
   }
-  if (config.exposure_auto != config_.exposure_auto || first_run_) {
+  if (config.exposure_auto != config_.exposure_auto || on_init_) {
     changed = true;
     setFeatureValue("ExposureAuto", config.exposure_auto.c_str());
   }
-  if (config.exposure_auto_tol != config_.exposure_auto_tol || first_run_) {
+  if (config.exposure_auto_tol != config_.exposure_auto_tol || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoAdjustTol",
                     static_cast<VmbInt64_t>(config.exposure_auto_tol));
   }
-  if (config.exposure_auto_max != config_.exposure_auto_max || first_run_) {
+  if (config.exposure_auto_max != config_.exposure_auto_max || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoMax",
                     static_cast<VmbInt64_t>(config.exposure_auto_max));
   }
-  if (config.exposure_auto_min != config_.exposure_auto_min || first_run_) {
+  if (config.exposure_auto_min != config_.exposure_auto_min || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoMin",
                     static_cast<VmbInt64_t>(config.exposure_auto_min));
   }
-  if (config.exposure_auto_outliers != config_.exposure_auto_outliers || first_run_) {
+  if (config.exposure_auto_outliers != config_.exposure_auto_outliers || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoOutliers",
                     static_cast<VmbInt64_t>(config.exposure_auto_outliers));
   }
-  if (config.exposure_auto_rate != config_.exposure_auto_rate || first_run_) {
+  if (config.exposure_auto_rate != config_.exposure_auto_rate || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoRate",
                     static_cast<VmbInt64_t>(config.exposure_auto_rate));
   }
-  if (config.exposure_auto_target != config_.exposure_auto_target || first_run_) {
+  if (config.exposure_auto_target != config_.exposure_auto_target || on_init_) {
     changed = true;
     setFeatureValue("ExposureAutoTarget",
                     static_cast<VmbInt64_t>(config.exposure_auto_target));
   }
-  if(changed && DEBUG_PRINTS){
+  if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New Exposure config: "
       << "\n\tExposureTimeAbs       : " << config.exposure               << " was " << config_.exposure
       << "\n\tExposureAuto          : " << config.exposure_auto          << " was " << config_.exposure_auto
@@ -707,44 +754,44 @@ void AvtVimbaCamera::updateExposureConfig(Config& config) {
 /** Change the Gain configuration */
 void AvtVimbaCamera::updateGainConfig(Config& config) {
   bool changed = false;
-  if (config.gain != config_.gain || first_run_) {
+  if (config.gain != config_.gain || on_init_) {
     changed = true;
     setFeatureValue("Gain", static_cast<float>(config.gain));
   }
-  if (config.gain_auto != config_.gain_auto || first_run_) {
+  if (config.gain_auto != config_.gain_auto || on_init_) {
     changed = true;
     setFeatureValue("GainAuto", config.gain_auto.c_str());
   }
-  if (config.gain_auto_tol != config_.gain_auto_tol || first_run_) {
+  if (config.gain_auto_tol != config_.gain_auto_tol || on_init_) {
     changed = true;
     setFeatureValue("GainAutoAdjustTol",
                     static_cast<VmbInt64_t>(config.gain_auto_tol));
   }
-  if (config.gain_auto_max != config_.gain_auto_max || first_run_) {
+  if (config.gain_auto_max != config_.gain_auto_max || on_init_) {
     changed = true;
     setFeatureValue("GainAutoMax", static_cast<float>(config.gain_auto_max));
   }
-  if (config.gain_auto_min != config_.gain_auto_min || first_run_) {
+  if (config.gain_auto_min != config_.gain_auto_min || on_init_) {
     changed = true;
     setFeatureValue("GainAutoMin",
                     static_cast<VmbInt64_t>(config.gain_auto_min));
   }
-  if (config.gain_auto_outliers != config_.gain_auto_outliers || first_run_) {
+  if (config.gain_auto_outliers != config_.gain_auto_outliers || on_init_) {
     changed = true;
     setFeatureValue("GainAutoMin",
                     static_cast<VmbInt64_t>(config.gain_auto_outliers));
   }
-  if (config.gain_auto_rate != config_.gain_auto_rate || first_run_) {
+  if (config.gain_auto_rate != config_.gain_auto_rate || on_init_) {
     changed = true;
     setFeatureValue("GainAutoOutliers",
                     static_cast<VmbInt64_t>(config.gain_auto_rate));
   }
-  if (config.gain_auto_target != config_.gain_auto_target || first_run_) {
+  if (config.gain_auto_target != config_.gain_auto_target || on_init_) {
     changed = true;
     setFeatureValue("GainAutoRate", static_cast<VmbInt64_t>(config.gain_auto_target));
   }
-  if(changed && DEBUG_PRINTS){
-    ROS_INFO_STREAM("New Exposure config: "
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New Gain config: "
       << "\n\tGain              : " << config.gain               << " was " << config_.gain
       << "\n\tGainAuto          : " << config.gain_auto          << " was " << config_.gain_auto
       << "\n\tGainAutoAdjustTol : " << config.gain_auto_tol      << " was " << config_.gain_auto_tol
@@ -759,28 +806,28 @@ void AvtVimbaCamera::updateGainConfig(Config& config) {
 /** Change the White Balance configuration */
 void AvtVimbaCamera::updateWhiteBalanceConfig(Config& config){
   bool changed = false;
-  if (config.balance_ratio_abs != config_.balance_ratio_abs || first_run_) {
+  if (config.balance_ratio_abs != config_.balance_ratio_abs || on_init_) {
     changed = true;
     setFeatureValue("BalanceRatioAbs", static_cast<float>(config.balance_ratio_abs));
   }
-  if (config.balance_ratio_selector != config_.balance_ratio_selector || first_run_) {
+  if (config.balance_ratio_selector != config_.balance_ratio_selector || on_init_) {
     changed = true;
     setFeatureValue("BalanceRatioSelector", config.balance_ratio_selector.c_str());
   }
-  if (config.whitebalance_auto != config_.whitebalance_auto || first_run_) {
+  if (config.whitebalance_auto != config_.whitebalance_auto || on_init_) {
     changed = true;
     setFeatureValue("BalanceWhiteAuto", config.whitebalance_auto.c_str());
   }
-  if (config.whitebalance_auto_tol != config_.whitebalance_auto_tol || first_run_) {
+  if (config.whitebalance_auto_tol != config_.whitebalance_auto_tol || on_init_) {
     changed = true;
     setFeatureValue("BalanceWhiteAutoAdjustTol", static_cast<VmbInt64_t>(config.whitebalance_auto_tol));
   }
-  if (config.whitebalance_auto_rate != config_.whitebalance_auto_rate || first_run_) {
+  if (config.whitebalance_auto_rate != config_.whitebalance_auto_rate || on_init_) {
     changed = true;
     setFeatureValue("BalanceWhiteAutoRate", static_cast<VmbInt64_t>(config.whitebalance_auto_rate));
   }
-  if(changed && DEBUG_PRINTS){
-    ROS_INFO_STREAM("New ROI config: "
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New White Balance config: "
       << "\n\tBalanceRatioAbs           : " << config.balance_ratio_abs      << " was " << config_.balance_ratio_abs
       << "\n\tBalanceRatioSelector      : " << config.balance_ratio_selector << " was " << config_.balance_ratio_selector
       << "\n\tBalanceWhiteAuto          : " << config.whitebalance_auto      << " was " << config_.whitebalance_auto
@@ -792,12 +839,12 @@ void AvtVimbaCamera::updateWhiteBalanceConfig(Config& config){
 /** Change the Binning and Decimation configuration */
 void AvtVimbaCamera::updatePtpModeConfig(Config& config) {
   bool changed = false;
-  if (config.ptp_mode != config_.ptp_mode || first_run_) {
+  if (config.ptp_mode != config_.ptp_mode || on_init_) {
     changed = true;
     setFeatureValue("PtpMode", config.ptp_mode.c_str());
   }
 
-  if(changed && DEBUG_PRINTS){
+  if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New PTP config: "
       << "\n\tPtpMode                   : " << config.ptp_mode << " was " << config_.ptp_mode);
   }
@@ -806,25 +853,25 @@ void AvtVimbaCamera::updatePtpModeConfig(Config& config) {
 /** Change the Binning and Decimation configuration */
 void AvtVimbaCamera::updateImageModeConfig(Config& config) {
   bool changed = false;
-  if (config.decimation_x != config_.decimation_x || first_run_) {
+  if (config.decimation_x != config_.decimation_x || on_init_) {
     changed = true;
     setFeatureValue("DecimationHorizontal",
                     static_cast<VmbInt64_t>(config.decimation_x));
   }
-  if (config.decimation_y != config_.decimation_y || first_run_) {
+  if (config.decimation_y != config_.decimation_y || on_init_) {
     changed = true;
     setFeatureValue("DecimationVertical", static_cast<VmbInt64_t>(config.decimation_y));
   }
-  if (config.binning_x != config_.binning_x || first_run_) {
+  if (config.binning_x != config_.binning_x || on_init_) {
     changed = true;
     setFeatureValue("BinningHorizontal", static_cast<VmbInt64_t>(config.binning_x));
   }
-  if (config.binning_y != config_.binning_y || first_run_) {
+  if (config.binning_y != config_.binning_y || on_init_) {
     changed = true;
     setFeatureValue("BinningVertical", static_cast<VmbInt64_t>(config.binning_y));
   }
-  if(changed && DEBUG_PRINTS){
-    ROS_INFO_STREAM("New Image config: "
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New Image Mode config: "
       << "\n\tDecimationHorizontal : " << config.decimation_x << " was " << config_.decimation_x
       << "\n\tDecimationVertical   : " << config.decimation_y << " was " << config_.decimation_y
       << "\n\tBinningHorizontal    : " << config.binning_x    << " was " << config_.binning_x
@@ -868,24 +915,24 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   config.width  = width;
   config.height = height;
 
-  if (config.roi_offset_x != config_.roi_offset_x || first_run_) {
+  if (config.roi_offset_x != config_.roi_offset_x || on_init_) {
     changed = true;
     setFeatureValue("OffsetX", static_cast<VmbInt64_t>(config.roi_offset_x));
   }
-  if (config.roi_offset_y != config_.roi_offset_y || first_run_) {
+  if (config.roi_offset_y != config_.roi_offset_y || on_init_) {
     changed = true;
     setFeatureValue("OffsetY", static_cast<VmbInt64_t>(config.roi_offset_y));
   }
-  if (config.width != config_.width || first_run_) {
+  if (config.width != config_.width || on_init_) {
     changed = true;
     setFeatureValue("Width", static_cast<VmbInt64_t>(config.width));
   }
-  if (config.height != config_.height || first_run_) {
+  if (config.height != config_.height || on_init_) {
     changed = true;
     setFeatureValue("Height", static_cast<VmbInt64_t>(config.height));
   }
 
-  if(changed && DEBUG_PRINTS){
+  if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New ROI config: "
       << "\n\tOffsetX : " << config.roi_offset_x << " was " << config_.roi_offset_x
       << "\n\tOffsetY : " << config.roi_offset_y << " was " << config_.roi_offset_y
@@ -898,12 +945,12 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
 void AvtVimbaCamera::updateBandwidthConfig(Config& config) {
   bool changed = false;
   if (config.stream_bytes_per_second
-      != config_.stream_bytes_per_second || first_run_) {
+      != config_.stream_bytes_per_second || on_init_) {
     changed = true;
     setFeatureValue("StreamBytesPerSecond",
                     static_cast<VmbInt64_t>(config.stream_bytes_per_second));
   }
-  if(changed && DEBUG_PRINTS){
+  if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New Bandwidth config: "
       << "\n\tStreamBytesPerSecond : " << config.stream_bytes_per_second << " was " << config_.stream_bytes_per_second);
   }
@@ -912,11 +959,11 @@ void AvtVimbaCamera::updateBandwidthConfig(Config& config) {
 /** Change the Pixel Format configuration */
 void AvtVimbaCamera::updatePixelFormatConfig(Config& config) {
   bool changed = false;
-  if (config.pixel_format != config_.pixel_format || first_run_) {
+  if (config.pixel_format != config_.pixel_format || on_init_) {
     changed = true;
     setFeatureValue("PixelFormat", config.pixel_format.c_str());
   }
-  if(changed && DEBUG_PRINTS){
+  if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New PixelFormat config: "
       << "\n\tPixelFormat : " << config.pixel_format << " was " << config_.pixel_format);
   }
@@ -926,27 +973,27 @@ void AvtVimbaCamera::updatePixelFormatConfig(Config& config) {
 void AvtVimbaCamera::updateGPIOConfig(Config& config) {
   bool changed = false;
   if (config.sync_in_selector
-      != config_.sync_in_selector || first_run_) {
+      != config_.sync_in_selector || on_init_) {
     changed = true;
     setFeatureValue("SyncInSelector", config.sync_in_selector.c_str());
   }
   if (config.sync_out_polarity
-      != config_.sync_out_polarity || first_run_) {
+      != config_.sync_out_polarity || on_init_) {
     changed = true;
     setFeatureValue("SyncOutPolarity", config.sync_out_polarity.c_str());
   }
   if (config.sync_out_selector
-      != config_.sync_out_selector || first_run_) {
+      != config_.sync_out_selector || on_init_) {
     changed = true;
     setFeatureValue("SyncOutSelector", config.sync_out_selector.c_str());
   }
   if (config.sync_out_source
-      != config_.sync_out_source || first_run_) {
+      != config_.sync_out_source || on_init_) {
     changed = true;
     setFeatureValue("SyncOutSource", config.sync_out_source.c_str());
   }
-  if(changed && DEBUG_PRINTS){
-    ROS_INFO_STREAM("New Bandwidth config: "
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New GPIO config: "
       << "\n\tSyncInSelector  : " << config.sync_in_selector  << " was " << config_.sync_in_selector
       << "\n\tSyncOutPolarity : " << config.sync_out_polarity << " was " << config_.sync_out_polarity
       << "\n\tSyncOutSelector : " << config.sync_out_selector << " was " << config_.sync_out_selector

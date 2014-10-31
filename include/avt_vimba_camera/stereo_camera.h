@@ -56,6 +56,9 @@ class StereoCamera {
   AvtVimbaCamera left_cam_;
   AvtVimbaCamera right_cam_;
 
+  bool left_ready_;
+  bool right_ready_;
+  bool show_debug_prints_;
 
   // Params
   std::string left_ip_;
@@ -67,6 +70,10 @@ class StereoCamera {
   std::string master_out_source_;
   std::string slave_trigger_source_;
   std::string slave_in_source_;
+
+  ros::Time left_time_;
+  ros::Time right_time_;
+  double max_sec_sync_error_;
 
   // Node handles
   ros::NodeHandle nh_;
@@ -102,6 +109,7 @@ class StereoCamera {
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);
   void configure(Config& newconfig, uint32_t level);
   void updateCameraInfo(const Config& config);
+  void sync(void);
 };
 }
 #endif
