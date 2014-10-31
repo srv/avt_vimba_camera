@@ -198,7 +198,6 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
 }
 
 void StereoCamera::updateCameraInfo(const Config& config) {
-  ROS_INFO("KK updateCameraInfo");
   // Get camera_info from the manager
   sensor_msgs::CameraInfo left_ci = left_info_man_->getCameraInfo();
   sensor_msgs::CameraInfo right_ci = right_info_man_->getCameraInfo();
