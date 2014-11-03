@@ -35,6 +35,7 @@
 
 #include <avt_vimba_camera/avt_vimba_camera.h>
 #include <avt_vimba_camera/AvtVimbaCameraConfig.h>
+#include <avt_vimba_camera/avt_vimba_api.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
@@ -42,6 +43,9 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
+
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <diagnostic_updater/publisher.h>
 
 #include <string>
 
@@ -55,6 +59,10 @@ class StereoCamera {
   AvtVimbaApi api_;
   AvtVimbaCamera left_cam_;
   AvtVimbaCamera right_cam_;
+
+  diagnostic_updater::Updater updater_;
+  diagnostic_updater::TopicDiagnostic* left_pub_freq_;
+  diagnostic_updater::TopicDiagnostic* right_pub_freq_;
 
   bool left_ready_;
   bool right_ready_;

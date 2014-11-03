@@ -31,15 +31,7 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/stereo_camera.h>
-#include <avt_vimba_camera/avt_vimba_api.h>
-
-#include <ros/console.h>
 #include <driver_base/SensorLevels.h>
-// #include <sensor_msgs/image_encodings.h>
-// #include <sensor_msgs/fill_image.h>
-
-#include <boost/lexical_cast.hpp>
-#include <sstream>
 
 #define DEBUG_PRINTS 1
 
@@ -80,6 +72,17 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));
   nhp_.param("slave_in_source", slave_in_source_, std::string("SyncIn1"));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
+
+  // Publish a hardware message to know & track the state of the cam
+  updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
+  double min_freq = 5;
+  double max_freq = 25;
+  diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
+  double min_stamp = -1;
+  double max_stamp = 5;
+  diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
+  left_pub_freq_ = new diagnostic_updater::TopicDiagnostic("left/image_raw", updater_, freq_params, stamp_params);
+  right_pub_freq_ = new diagnostic_updater::TopicDiagnostic("right/image_raw", updater_, freq_params, stamp_params);
 
   // Set camera info managers
   left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
@@ -143,13 +146,15 @@ void StereoCamera::sync(void) {
       ros::Time ros_time = ros::Time::now();
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
-      
+
       lci.header.stamp = ros_time;
       left_img_.header.stamp = ros_time;
       rci.header.stamp = ros_time;
       right_img_.header.stamp = ros_time;
       left_pub_.publish(left_img_, lci);
+      left_pub_freq_->tick();
       right_pub_.publish(right_img_, rci);
+      right_pub_freq_->tick();
       right_ready_ = false;
       left_ready_ = false;
     }
@@ -166,6 +171,7 @@ void StereoCamera::sync(void) {
 *               changed parameters (0xffffffff on initial call)
 **/
 void StereoCamera::configure(Config& newconfig, uint32_t level) {
+  updater_.broadcast(0, "Dynamic reconfigure.");
 
   Config left_config = newconfig;
   Config right_config = newconfig;

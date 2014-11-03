@@ -107,7 +107,7 @@ class AvtVimbaCamera {
   boost::mutex config_mutex_;
 
   bool opened_;
-  bool imaging_;
+  bool streaming_;
   bool on_init_;
   bool show_debug_prints_;
 

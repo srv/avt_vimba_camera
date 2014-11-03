@@ -36,9 +36,6 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
-#include <boost/lexical_cast.hpp>
-#include <sstream>
-
 namespace avt_vimba_camera {
 
 static const char* AutoMode[] = {
@@ -81,7 +78,7 @@ static const char* FeatureDataType[] = {
 AvtVimbaCamera::AvtVimbaCamera() {
   // Init global variables
   opened_ = false;   // camera connected to the api
-  imaging_ = false;  // capturing frames
+  streaming_ = false;  // capturing frames
   on_init_ = true;   // on initialization phase
   show_debug_prints_ = false;
 }
@@ -139,7 +136,7 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 }
 
 void AvtVimbaCamera::startImaging(void) {
-  if (!imaging_) {
+  if (!streaming_) {
     // Start streaming
     VmbErrorType err =
       vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
@@ -147,7 +144,7 @@ void AvtVimbaCamera::startImaging(void) {
     if (VmbErrorSuccess == err) {
       ROS_INFO_STREAM("[" << ros::this_node::getName()
         << "]: Starting continuous image acquisition...(" << frame_id_ << ")");
-      imaging_ = true;
+      streaming_ = true;
     } else {
       ROS_ERROR_STREAM("[" << ros::this_node::getName()
         << "]: Could not start continuous image acquisition(" << frame_id_ << "). "
@@ -159,13 +156,13 @@ void AvtVimbaCamera::startImaging(void) {
 }
 
 void AvtVimbaCamera::stopImaging(void) {
-  if (imaging_ || on_init_) {
+  if (streaming_ || on_init_) {
     VmbErrorType err =
       vimba_camera_ptr_->StopContinuousImageAcquisition();
     if (VmbErrorSuccess == err) {
       ROS_INFO_STREAM("[" << ros::this_node::getName()
         << "]: Acquisition stoppped... (" << frame_id_ << ")");
-      imaging_ = false;
+      streaming_ = false;
     } else {
       ROS_ERROR_STREAM("[" << ros::this_node::getName()
         << "]: Could not stop image acquisition (" << frame_id_ << ")."
@@ -178,10 +175,10 @@ void AvtVimbaCamera::stopImaging(void) {
 
 void AvtVimbaCamera::updateConfig(Config& config) {
   boost::mutex::scoped_lock lock(config_mutex_);
-  
+
   frame_id_ =  config.frame_id;
 
-  if (imaging_) stopImaging();  
+  if (streaming_) stopImaging();
 
   if (on_init_) {
     config_ = config;
@@ -201,7 +198,7 @@ void AvtVimbaCamera::updateConfig(Config& config) {
 
   if (on_init_) {
     on_init_ = false;
-    
+
   }
 
   startImaging();
@@ -660,7 +657,7 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
     getFeatureValue("AcquisitionFrameRateLimit", acquisition_frame_rate_limit);
     if (acquisition_frame_rate_limit < config.acquisition_rate) {
       double rate = (double)floor(acquisition_frame_rate_limit);
-      ROS_WARN_STREAM("Max frame rate allowed: " << acquisition_frame_rate_limit 
+      ROS_WARN_STREAM("Max frame rate allowed: " << acquisition_frame_rate_limit
                       << ". Setting " << rate << "...");
       config.acquisition_rate = rate;
     }

@@ -32,16 +32,6 @@
 
 #include <avt_vimba_camera/mono_camera.h>
 
-#include <ros/ros.h>
-#include <ros/console.h>
-#include <sensor_msgs/image_encodings.h>
-#include <sensor_msgs/fill_image.h>
-#include <driver_base/SensorLevels.h>
-
-#include <boost/lexical_cast.hpp>
-#include <sstream>
-#include <string>
-
 #define DEBUG_PRINTS 1
 
 namespace avt_vimba_camera {
@@ -62,16 +52,23 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   // Set the params
   nhp_.param("ip", ip_, std::string(""));
   nhp_.param("guid", guid_, std::string(""));
-  nhp_.param("camera_info_url", camera_info_url_, std::string(""));  
+  nhp_.param("camera_info_url", camera_info_url_, std::string(""));
   std::string frame_id;
-  nhp_.param("frame_id", frame_id, std::string(""));  
+  nhp_.param("frame_id", frame_id, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
 
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
 
-  // Start the camera
-  // cam_.start(ip_, guid_);
+  // Publish a hardware message to know & track the state of the cam
+  updater_.setHardwareID("Mono-"+guid_);
+  double min_freq = 5;
+  double max_freq = 25;
+  diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
+  double min_stamp = -1;
+  double max_stamp = 5;
+  diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
+  pub_freq_ = new diagnostic_updater::TopicDiagnostic("left/image_raw", updater_, freq_params, stamp_params);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
@@ -91,10 +88,12 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
       sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
       ci.header.stamp = img.header.stamp = ros_time;
       pub_.publish(img, ci);
+      pub_freq_->tick();
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
   }
+  updater_.update();
 }
 
 /** Dynamic reconfigure callback
@@ -107,6 +106,7 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
 *               changed parameters (0xffffffff on initial call)
 **/
 void MonoCamera::configure(Config& newconfig, uint32_t level) {
+  updater_.broadcast(0, "Dynamic reconfigure.");
   try {
     // resolve frame ID using tf_prefix parameter
     if (newconfig.frame_id == "") {
@@ -145,7 +145,7 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
 
   // set the new URL and load CameraInfo (if any) from it
   std::string camera_info_url;
-  nhp_.getParam("camera_info_url", camera_info_url);  
+  nhp_.getParam("camera_info_url", camera_info_url);
   if (camera_info_url != camera_info_url_) {
     info_man_->setCameraName(config.frame_id);
     if (info_man_->validateURL(camera_info_url)) {
