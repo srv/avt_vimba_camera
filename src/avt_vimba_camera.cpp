@@ -308,17 +308,17 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
           break;
         }
         if (VmbErrorSuccess != err) {
-          ROS_ERROR_STREAM("Could not get feature value. Error code: "
+          ROS_WARN_STREAM("Could not get feature value. Error code: "
                     << api_.errorCodeToMessage(err));
         }
       }
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_ERROR_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << ros::this_node::getName()
       << "]: Could not get feature " << feature_str);
   }
   if (show_debug_prints_)
@@ -362,17 +362,17 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str,
           break;
         }
         if (VmbErrorSuccess != err) {
-          ROS_ERROR_STREAM("Could not get feature value. Error code: "
+          ROS_WARN_STREAM("Could not get feature value. Error code: "
                     << api_.errorCodeToMessage(err));
         }
       }
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_ERROR_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << ros::this_node::getName()
       << "]: Could not get feature " << feature_str);
   }
   ROS_DEBUG_STREAM("Asking for feature " << feature_str
@@ -405,11 +405,11 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
               if (available) {
                 err = vimba_feature_ptr->SetValue(val);
               } else {
-                ROS_ERROR_STREAM("[" << ros::this_node::getName()
+                ROS_WARN_STREAM("[" << ros::this_node::getName()
                   << "]: Feature " << feature_str << " is available now.");
               }
             } else {
-              ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+              ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
                 << feature_str << ": value unavailable\n\tERROR "
                 << api_.errorCodeToMessage(err));
             }
@@ -417,21 +417,21 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
             err = vimba_feature_ptr->SetValue(val);
           }
         } else {
-          ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+          ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
             << feature_str << ": Bad data type\n\tERROR "
             << api_.errorCodeToMessage(err));
         }
       } else {
-        ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+        ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
                          << feature_str
                          << " is not writable.");
       }
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
         << feature_str << ": ERROR " << api_.errorCodeToMessage(err));
     }
   } else {
-    ROS_ERROR_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << ros::this_node::getName()
       << "]: Could not get feature " << feature_str
       << "\n Error: " << api_.errorCodeToMessage(err));
   }
