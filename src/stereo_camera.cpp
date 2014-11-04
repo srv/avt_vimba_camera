@@ -75,6 +75,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
+  updater_.broadcast(0, "Device is closed.");
   double min_freq = 5;
   double max_freq = 25;
   diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
@@ -95,6 +96,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 StereoCamera::~StereoCamera() {
   left_cam_.stop();
   right_cam_.stop();
+  updater_.broadcast(0, "Device is closed.");
   left_pub_.shutdown();
   right_pub_.shutdown();
 }
@@ -193,8 +195,9 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
     }
     if (!right_cam_.isOpened()) {
       right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
+      if (left_cam_.isOpened() && right_cam_.isOpened())
+        updater_.broadcast(0, "Device is open.");
     }
-
     left_cam_.updateConfig(left_config);
     right_cam_.updateConfig(right_config);
     updateCameraInfo(newconfig);

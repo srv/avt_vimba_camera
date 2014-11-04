@@ -62,6 +62,7 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
 
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Mono-"+guid_);
+  updater_.broadcast(0, "Device is closed.");
   double min_freq = 5;
   double max_freq = 25;
   diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
@@ -76,6 +77,7 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
 
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
+  updater_.broadcast(0, "Device is closed.");
   pub_.shutdown();
 }
 
@@ -114,8 +116,10 @@ void MonoCamera::configure(Config& newconfig, uint32_t level) {
     }
     // The camera already stops & starts acquisition
     // so there's no problem on changing any feature.
-    if (!cam_.isOpened())
+    if (!cam_.isOpened()) {
       cam_.start(ip_, guid_, show_debug_prints_);
+      updater_.broadcast(0, "Device is opened.");
+    }
     cam_.updateConfig(newconfig);
     updateCameraInfo(newconfig);
   } catch (const std::exception& e) {
