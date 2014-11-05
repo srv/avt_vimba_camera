@@ -266,6 +266,10 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   vimba_camera_ptr_->QueueFrame(vimba_frame_ptr);
 }
 
+bool AvtVimbaCamera::resetTimestamp(void) {
+  return runCommand("GevTimestampControlReset");
+}
+
 // Template function to GET a feature value from the camera
 template<typename T>
 bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {

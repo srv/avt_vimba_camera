@@ -144,7 +144,7 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
 void StereoCamera::sync(void) {
   if (left_ready_ && right_ready_) {
     if( abs(left_time_.toSec() - right_time_.toSec()) <= max_sec_sync_error_ ) {
-      ROS_INFO("KK SYNC");
+      ROS_INFO_STREAM("KK SYNC error: " << abs(left_time_.toSec() - right_time_.toSec()));
       ros::Time ros_time = ros::Time::now();
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
@@ -195,8 +195,11 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
     }
     if (!right_cam_.isOpened()) {
       right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
-      if (left_cam_.isOpened() && right_cam_.isOpened())
+      if (left_cam_.isOpened() && right_cam_.isOpened()){
+        left_cam_.resetTimestamp();
+        right_cam_.resetTimestamp();
         updater_.broadcast(0, "Device is open.");
+      }
     }
     left_cam_.updateConfig(left_config);
     right_cam_.updateConfig(right_config);

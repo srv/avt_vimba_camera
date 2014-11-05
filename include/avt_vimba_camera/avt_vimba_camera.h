@@ -66,6 +66,7 @@ class AvtVimbaCamera {
   AvtVimbaCamera();
   void start(std::string ip_str, std::string guid_str, bool debug_prints = true);
   void stop();
+  bool resetTimestamp(void);
 
   CameraPtr getCameraPtr(void) {
     return vimba_camera_ptr_;
