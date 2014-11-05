@@ -266,6 +266,17 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   vimba_camera_ptr_->QueueFrame(vimba_frame_ptr);
 }
 
+double AvtVimbaCamera::getTimestamp(void) {
+  double timestamp = -1.0;
+  if (runCommand("GevTimestampControlLatch")) {
+    VmbInt64_t freq, ticks;
+    getFeatureValue("GevTimestampTickFrequency", freq);
+    getFeatureValue("GevTimestampValue", ticks);
+    timestamp = ((double)ticks)/((double)freq);
+  }
+  return timestamp;
+}
+
 bool AvtVimbaCamera::resetTimestamp(void) {
   return runCommand("GevTimestampControlReset");
 }
