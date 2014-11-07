@@ -271,7 +271,9 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
 
 double AvtVimbaCamera::getTimestamp(void) {
   double timestamp = -1.0;
+  ROS_INFO_STREAM("going to run coommmannd");
   if (runCommand("GevTimestampControlLatch")) {
+    ROS_INFO_STREAM("command successfusl");
     VmbInt64_t freq, ticks;
     getFeatureValue("GevTimestampTickFrequency", freq);
     getFeatureValue("GevTimestampValue", ticks);
@@ -460,19 +462,30 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
 // Template function to RUN a command
 bool AvtVimbaCamera::runCommand(const std::string& command_str) {
   FeaturePtr feature_ptr;
-  if (VmbErrorSuccess ==
-    vimba_camera_ptr_->GetFeatureByName(command_str.c_str(), feature_ptr)) {
-    if ( VmbErrorSuccess == feature_ptr->RunCommand() ) {
+  VmbErrorType err = vimba_camera_ptr_->GetFeatureByName(command_str.c_str(), feature_ptr);
+  if (VmbErrorSuccess == err ) {
+    err = feature_ptr->RunCommand();
+    if ( VmbErrorSuccess == err ) {
       bool is_command_done = false;
       do {
-        if ( VmbErrorSuccess != feature_ptr->IsCommandDone(is_command_done) ) {
+        err = feature_ptr->IsCommandDone(is_command_done);
+        if ( VmbErrorSuccess != err ) {
           break;
         }
         ROS_INFO_STREAM_THROTTLE(1, "Waiting for command "
           << command_str.c_str() << "...");
       } while ( false == is_command_done );
       ROS_INFO_STREAM("Command " << command_str.c_str() << " done!");
+      return true;
+    } else {
+      ROS_WARN_STREAM("[" << ros::this_node::getName()
+      << "]: Could not run command " << command_str << ". Error: " << api_.errorCodeToMessage(err));
+      return false;
     }
+  } else {
+    ROS_WARN_STREAM("[" << ros::this_node::getName()
+      << "]: Could not get feature command " << command_str << ". Error: " << api_.errorCodeToMessage(err));
+    return false;
   }
 }
 
