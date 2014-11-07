@@ -119,6 +119,7 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
   }
+  updater_.update();
 }
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
