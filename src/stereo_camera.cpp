@@ -66,7 +66,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
   double max_allowed_time_error_double;
-  nhp_.param("max_allowed_time_error", max_sec_sync_error_, 0.05);  // time in seconcs
+  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 5e6);  // time in seconcs
 
   nhp_.param("master_out_source", master_out_source_, std::string("Exposing"));
   nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));
@@ -103,13 +103,9 @@ StereoCamera::~StereoCamera() {
 
 void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
-  ROS_INFO("left frame callback");
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      // sensor_msgs::CameraInfo ci = left_info_man_->getCameraInfo();
-      // ci.header.stamp = img.header.stamp = ros_time;
-      // left_pub_.publish(img, ci);
       left_img_ = img;
       left_ready_ = true;
       left_time_ = ros_time;
@@ -124,13 +120,9 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
-  ROS_INFO("right frame callback");
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      // sensor_msgs::CameraInfo ci = right_info_man_->getCameraInfo();
-      // ci.header.stamp = img.header.stamp = ros_time;
-      // right_pub_.publish(img, ci);
       right_img_ = img;
       right_ready_ = true;
       right_time_ = ros_time;
@@ -144,8 +136,8 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
 
 void StereoCamera::sync(void) {
   if (left_ready_ && right_ready_) {
-    if( abs(left_time_.toSec() - right_time_.toSec()) <= max_sec_sync_error_ ) {
-      ROS_INFO_STREAM("KK SYNC error: " << abs(left_time_.toSec() - right_time_.toSec()));
+    if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
+      ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error.");
       ros::Time ros_time = ros::Time::now();
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();

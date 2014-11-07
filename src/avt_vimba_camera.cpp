@@ -178,7 +178,10 @@ void AvtVimbaCamera::updateConfig(Config& config) {
 
   frame_id_ =  config.frame_id;
 
-  if (streaming_) stopImaging();
+  if (streaming_) {
+    stopImaging();
+    ros::Duration(0.5).sleep(); // sleep for half a second
+  } 
 
   if (on_init_) {
     config_ = config;

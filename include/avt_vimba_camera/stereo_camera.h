@@ -81,7 +81,7 @@ class StereoCamera {
 
   ros::Time left_time_;
   ros::Time right_time_;
-  double max_sec_sync_error_;
+  double max_nsec_sync_error_;
 
   // Node handles
   ros::NodeHandle nh_;
