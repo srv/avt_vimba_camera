@@ -1,0 +1,9 @@
+<launch>
+	<arg name="stereo" default="stereo"/>
+	<node pkg="camera_calibration" type="cameracalibrator.py" name="camera_calibrator" args="-k 6 --size 8x6 --square=0.04" output="screen">
+		<remap from="left" to="$(arg stereo)/left/image_mono" />
+		<remap from="left_camera" to="$(arg stereo)/left" />
+		<remap from="right" to="$(arg stereo)/right/image_mono" />
+		<remap from="right_camera" to="$(arg stereo)/right" />
+	</node>
+</launch>

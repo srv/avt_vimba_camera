@@ -1,0 +1,46 @@
+<launch>
+
+	<group ns="stereo">
+		<node name="stereo_image_proc" pkg="stereo_image_proc" type="stereo_image_proc">
+			<!-- <param name="queue_size" value="5"/>
+			<param name="approximate_sync" value="true"/> -->
+		</node>
+	</group>
+
+	<node name="stereo" pkg="avt_vimba_camera" type="stereo_camera_node" output="screen">
+
+		<!-- Static params -->
+		<param name="left_guid" value="50-0503343290"/>
+		<param name="right_guid" value="50-0503343289"/>
+		<param name="left_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343290.yaml"/>
+		<param name="right_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343289.yaml"/>
+
+		<!-- Sync params -->
+		<param name="master_out_source" value="Exposing"/>
+		<param name="slave_trigger_source" value="Line1"/>
+		<!-- <param name="slave_trigger_source" value="FixedRate"/> -->
+		<param name="slave_in_source" value="SyncIn1"/>
+
+		<param name="show_debug_prints" value="true"/>
+
+		<!-- Dynamic reconfigure params -->
+		<param name="frame_id" value="stereo"/>
+		<param name="trig_timestamp_topic" value=""/>
+		<param name="trigger_source" value="FixedRate"/>
+		<param name="acquisition_mode" value="Continuous"/>
+		<param name="acquisition_rate" value="10"/>
+		<param name="pixel_format" value="BayerRG8"/>
+		<param name="exposure" value="1000"/>
+		<param name="gain" value="0"/>
+		<param name="exposure_auto" value="Continuous"/>
+		<param name="gain_auto" value="Continuous"/>
+		<param name="whitebalance_auto" value="Continuous"/>
+		<param name="x_offset" value="8"/>
+		<param name="y_offset" value="9"/>
+		<param name="width" value="1920"/>
+		<param name="height" value="1440"/>
+		<param name="stream_bytes_per_second" value="45000000"/>
+	</node>
+
+</launch>
+

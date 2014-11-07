@@ -40,41 +40,53 @@ include_directories(
   include
 )
 
-add_executable(avt_vimba_camera_node
-  src/mono_camera_node.cpp
-  src/vimba_ros.cpp
+function(add_dependencies_and_linkings arg)
+  add_dependencies(${arg}
+    ${PROJECT_NAME}_gencfg
+    #${libvimba_EXPORTED_TARGETS}
+  )
+
+  if("${ARCH}" STREQUAL i386)
+    target_link_libraries(${arg}
+      ${catkin_LIBRARIES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaC.so
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaCPP.so
+    )
+  elseif("${ARCH}" STREQUAL x86_64)
+    target_link_libraries(${arg}
+      ${catkin_LIBRARIES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaC.so
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so
+    )
+  else()
+    message(FATAL_ERROR "[libvimba]: Architecture ${ARCH} not suported. Exiting...")
+  endif()
+endfunction(add_dependencies_and_linkings)
+
+add_executable(mono_camera_node
+  src/nodes/mono_camera_node.cpp
+  src/mono_camera.cpp
+  src/avt_vimba_camera.cpp
   src/frame_observer.cpp
 )
 
-add_dependencies(avt_vimba_camera_node
-  ${PROJECT_NAME}_gencfg
-  #${libvimba_EXPORTED_TARGETS}
+add_dependencies_and_linkings(mono_camera_node)
+
+add_executable(stereo_camera_node
+  src/nodes/stereo_camera_node.cpp
+  src/stereo_camera.cpp
+  src/avt_vimba_camera.cpp
+  src/frame_observer.cpp
 )
 
-if("${ARCH}" STREQUAL i386)
-  target_link_libraries(avt_vimba_camera_node
-    ${catkin_LIBRARIES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaC.so
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib/32bit/libVimbaCPP.so
-  )
-elseif("${ARCH}" STREQUAL x86_64)
-  target_link_libraries(avt_vimba_camera_node
-    ${catkin_LIBRARIES}
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaC.so
-    ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so
-  )
-else()
-  message(FATAL_ERROR "[libvimba]: Architecture ${ARCH} not suported. Exiting...")
-endif()
-
-
+add_dependencies_and_linkings(stereo_camera_node)
 
 #############
 ## Install ##
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS avt_vimba_camera_node
+install(TARGETS mono_camera_node stereo_camera_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -89,7 +101,8 @@ install(DIRECTORY include
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
-  launch/avt_vimba_camera.launch
+  launch/mono_camera.launch
+  launch/stereo_camera.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
