@@ -68,6 +68,9 @@ class StereoCamera {
   bool right_ready_;
   bool show_debug_prints_;
 
+  long long unsigned int left_timestamp_;
+  long long unsigned int right_timestamp_;
+
   // Params
   std::string left_ip_;
   std::string right_ip_;

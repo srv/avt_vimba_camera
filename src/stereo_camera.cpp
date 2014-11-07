@@ -109,6 +109,7 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
       left_img_ = img;
       left_ready_ = true;
       left_time_ = ros_time;
+      vimba_frame_ptr->GetTimestamp(left_timestamp_);
       sync();
     }
     else {
@@ -126,6 +127,7 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
       right_img_ = img;
       right_ready_ = true;
       right_time_ = ros_time;
+      vimba_frame_ptr->GetTimestamp(right_timestamp_);
       sync();
     }
     else {
@@ -138,7 +140,10 @@ void StereoCamera::sync(void) {
   if (left_ready_ && right_ready_) {
     if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
       ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error.");
-      ros::Time ros_time = ros::Time::now();
+
+      //ROS_INFO_STREAM("Timestamp difference  is " << (left_timestamp_ - right_timestamp_) << " and left timestamp is " << left_timestamp_);
+
+      ros::Time ros_time = left_time_;
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
 
