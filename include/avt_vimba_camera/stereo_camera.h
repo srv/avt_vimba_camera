@@ -62,6 +62,7 @@ class StereoCamera {
 
   diagnostic_updater::Updater updater_;
   diagnostic_updater::TopicDiagnostic* pub_freq_;
+  diagnostic_updater::FunctionDiagnosticTask* sync_check_;
 
   bool left_ready_;
   long long unsigned int left_frames_;

@@ -79,9 +79,9 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   double max_stamp = 5;
   diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
   pub_freq_ = new diagnostic_updater::TopicDiagnostic("right/image_raw", updater_, freq_params, stamp_params);
+  sync_check_ = new diagnostic_updater::FunctionDiagnosticTask("Sync check", boost::bind(&avt_vimba_camera::StereoCamera::syncDiagnostic, this, _1));
 
-  diagnostic_updater::FunctionDiagnosticTask sync_check("Sync check", boost::bind(&avt_vimba_camera::StereoCamera::syncDiagnostic, this, _1));
-
+  updater_.addTask(&sync_check_);
   updater_.update();
 
   // Set camera info managers
