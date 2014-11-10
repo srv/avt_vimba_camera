@@ -33,19 +33,15 @@
 #include <avt_vimba_camera/stereo_camera.h>
 #include <driver_base/SensorLevels.h>
 
+#include <boost/bind.hpp>
+
 #define DEBUG_PRINTS 1
 
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
-:nh_(nh), nhp_(nhp), it_(nhp) {
-  // Prepare node handles for the two cameras
+:nh_(nh), nhp_(nhp), it_(nhp), left_cam_("left"), right_cam_("right") {
   // TODO use nodelets with getMTNodeHandle()
-  // left_nhp_  = ros::NodeHandle(nhp, "left");
-  // right_nhp_ = ros::NodeHandle(nhp, "right");
-  // left_it_  = image_transport::ImageTransport(left_nhp_);
-  // right_it- = image_transport::ImageTransport(right_nhp_);
-
   // Start Vimba & list all available cameras
   api_.start();
 
@@ -82,8 +78,11 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   double min_stamp = -1;
   double max_stamp = 5;
   diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
-  left_pub_freq_ = new diagnostic_updater::TopicDiagnostic("left/image_raw", updater_, freq_params, stamp_params);
-  right_pub_freq_ = new diagnostic_updater::TopicDiagnostic("right/image_raw", updater_, freq_params, stamp_params);
+  pub_freq_ = new diagnostic_updater::TopicDiagnostic("right/image_raw", updater_, freq_params, stamp_params);
+
+  diagnostic_updater::FunctionDiagnosticTask sync_check("Sync check", boost::bind(&avt_vimba_camera::StereoCamera::syncDiagnostic, this, _1));
+
+  updater_.update();
 
   // Set camera info managers
   left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
@@ -102,6 +101,7 @@ StereoCamera::~StereoCamera() {
 }
 
 void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
+  left_frames_++;
   ros::Time ros_time = ros::Time::now();
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
@@ -120,6 +120,7 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
 }
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
+  right_frames_++;
   ros::Time ros_time = ros::Time::now();
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
@@ -139,10 +140,8 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
 void StereoCamera::sync(void) {
   if (left_ready_ && right_ready_) {
     if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
+      synced_frames_++;
       ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error.");
-
-      //ROS_INFO_STREAM("Timestamp difference  is " << (left_timestamp_ - right_timestamp_) << " and left timestamp is " << left_timestamp_);
-
       ros::Time ros_time = left_time_;
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
@@ -152,9 +151,8 @@ void StereoCamera::sync(void) {
       rci.header.stamp = ros_time;
       right_img_.header.stamp = ros_time;
       left_pub_.publish(left_img_, lci);
-      left_pub_freq_->tick(ros_time);
       right_pub_.publish(right_img_, rci);
-      right_pub_freq_->tick(ros_time);
+      pub_freq_->tick(ros_time);
       right_ready_ = false;
       left_ready_ = false;
     }
@@ -171,8 +169,6 @@ void StereoCamera::sync(void) {
 *               changed parameters (0xffffffff on initial call)
 **/
 void StereoCamera::configure(Config& newconfig, uint32_t level) {
-  updater_.broadcast(0, "Dynamic reconfigure.");
-
   Config left_config = newconfig;
   Config right_config = newconfig;
 
@@ -196,7 +192,6 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
       if (left_cam_.isOpened() && right_cam_.isOpened()){
         left_cam_.resetTimestamp();
         right_cam_.resetTimestamp();
-        updater_.broadcast(0, "Device is open.");
       }
     }
     left_cam_.updateConfig(left_config);
@@ -282,5 +277,13 @@ void StereoCamera::updateCameraInfo(const Config& config) {
   // push the changes to manager
   left_info_man_->setCameraInfo(left_ci);
   right_info_man_->setCameraInfo(right_ci);
+}
+
+void StereoCamera::syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &stat)
+{
+  stat.add("Number of left frames", left_frames_);
+  stat.add("Number of right frames", right_frames_);
+  stat.add("Number of sync'd frames", synced_frames_);
+  stat.add("Dropped % sync'd frames", 2 * (double)synced_frames_ / ((double)left_frames_ + (double)right_frames_));
 }
 };

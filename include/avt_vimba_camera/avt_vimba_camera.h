@@ -39,6 +39,9 @@
 #include <avt_vimba_camera/frame_observer.h>
 #include <avt_vimba_camera/avt_vimba_api.h>
 
+#include <diagnostic_updater/diagnostic_updater.h>
+#include <diagnostic_updater/publisher.h>
+
 #include <boost/function.hpp>
 #include <boost/thread.hpp>
 
@@ -61,9 +64,19 @@ enum FrameStartTriggerMode {
   SyncIn4
 };
 
+enum CameraState {
+  OPENING,
+  IDLE,
+  CAMERA_NOT_FOUND,
+  FORMAT_ERROR,
+  ERROR,
+  OK
+};
+
 class AvtVimbaCamera {
  public:
   AvtVimbaCamera();
+  AvtVimbaCamera(std::string name);
   void start(std::string ip_str, std::string guid_str, bool debug_prints = true);
   void stop();
   double getTimestamp(void);
@@ -112,9 +125,15 @@ class AvtVimbaCamera {
   bool streaming_;
   bool on_init_;
   bool show_debug_prints_;
+  std::string name_;
+
+  diagnostic_updater::Updater updater_;
+  CameraState camera_state_;
+  std::string diagnostic_msg_;
 
   // ROS params
   int num_frames_;
+  std::string guid_;
   std::string frame_id_;
   std::string trigger_source_;
   int trigger_source_int_;
@@ -148,6 +167,8 @@ class AvtVimbaCamera {
   void updatePixelFormatConfig(Config& config);
   void updatePtpModeConfig(Config& config);
   void updateGPIOConfig(Config& config);
+
+  void getCurrentState(diagnostic_updater::DiagnosticStatusWrapper &stat);
 
 };
 }

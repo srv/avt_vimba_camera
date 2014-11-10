@@ -61,10 +61,12 @@ class StereoCamera {
   AvtVimbaCamera right_cam_;
 
   diagnostic_updater::Updater updater_;
-  diagnostic_updater::TopicDiagnostic* left_pub_freq_;
-  diagnostic_updater::TopicDiagnostic* right_pub_freq_;
+  diagnostic_updater::TopicDiagnostic* pub_freq_;
 
   bool left_ready_;
+  long long unsigned int left_frames_;
+  long long unsigned int right_frames_;
+  long long unsigned int synced_frames_;
   bool right_ready_;
   bool show_debug_prints_;
 
@@ -121,6 +123,7 @@ class StereoCamera {
   void configure(Config& newconfig, uint32_t level);
   void updateCameraInfo(const Config& config);
   void sync(void);
+  void syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 }
 #endif

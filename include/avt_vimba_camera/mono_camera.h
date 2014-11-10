@@ -44,9 +44,6 @@
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
 
-#include <diagnostic_updater/diagnostic_updater.h>
-#include <diagnostic_updater/publisher.h>
-
 #include <string>
 
 namespace avt_vimba_camera {
@@ -59,8 +56,8 @@ class MonoCamera {
   AvtVimbaApi api_;
   AvtVimbaCamera cam_;
 
-  diagnostic_updater::Updater updater_;
-  diagnostic_updater::TopicDiagnostic* pub_freq_;
+  // diagnostic_updater::Updater updater_;
+  // diagnostic_updater::TopicDiagnostic* pub_freq_;
 
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;

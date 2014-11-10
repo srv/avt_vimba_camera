@@ -60,24 +60,12 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
 
-  // Publish a hardware message to know & track the state of the cam
-  updater_.setHardwareID("Mono-"+guid_);
-  updater_.broadcast(0, "Device is closed.");
-  double min_freq = 5;
-  double max_freq = 25;
-  diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
-  double min_stamp = -1;
-  double max_stamp = 5;
-  diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
-  pub_freq_ = new diagnostic_updater::TopicDiagnostic("left/image_raw", updater_, freq_params, stamp_params);
-
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
 }
 
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
-  updater_.broadcast(0, "Device is closed.");
   pub_.shutdown();
 }
 
@@ -90,12 +78,11 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
       sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
       ci.header.stamp = img.header.stamp = ros_time;
       pub_.publish(img, ci);
-      pub_freq_->tick(ros_time);
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
   }
-  updater_.update();
+  // updater_.update();
 }
 
 /** Dynamic reconfigure callback
@@ -108,7 +95,6 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
 *               changed parameters (0xffffffff on initial call)
 **/
 void MonoCamera::configure(Config& newconfig, uint32_t level) {
-  updater_.broadcast(0, "Dynamic reconfigure.");
   try {
     // resolve frame ID using tf_prefix parameter
     if (newconfig.frame_id == "") {
@@ -118,7 +104,6 @@ void MonoCamera::configure(Config& newconfig, uint32_t level) {
     // so there's no problem on changing any feature.
     if (!cam_.isOpened()) {
       cam_.start(ip_, guid_, show_debug_prints_);
-      updater_.broadcast(0, "Device is opened.");
     }
     cam_.updateConfig(newconfig);
     updateCameraInfo(newconfig);

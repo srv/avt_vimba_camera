@@ -75,38 +75,73 @@ static const char* FeatureDataType[] = {
   "string",
   "bool"};
 
+static const char* State[] = {
+  "Opening",
+  "Idle",
+  "Camera not found",
+  "Format error",
+  "Error",
+  "Ok"};
+
+
 AvtVimbaCamera::AvtVimbaCamera() {
+  AvtVimbaCamera(ros::this_node::getName().c_str());
+}
+
+AvtVimbaCamera::AvtVimbaCamera(std::string name) {
   // Init global variables
   opened_ = false;   // camera connected to the api
   streaming_ = false;  // capturing frames
   on_init_ = true;   // on initialization phase
   show_debug_prints_ = false;
+  name_ = name;
+
+  camera_state_ = OPENING;
+
+  updater_.setHardwareID("unknown");
+  updater_.add(name_, this, &AvtVimbaCamera::getCurrentState);
+  updater_.update();
+
+
 }
 
 void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_prints) {
   if (opened_) return;
 
   show_debug_prints_ = debug_prints;
+  updater_.broadcast(0, "Starting device with IP:" + ip_str + " or GUID:" + guid_str);
 
   // Determine which camera to use. Try IP first
   if (!ip_str.empty()) {
+    diagnostic_msg_ = "Trying to open camera by IP: " + ip_str;
     ROS_INFO_STREAM("Trying to open camera by IP: " << ip_str);
     vimba_camera_ptr_ = openCamera(ip_str);
+    updater_.setHardwareID(ip_str);
+    guid_ = ip_str;
     // If both guid and IP are available, open by IP and check guid
     if (!guid_str.empty()) {
       std::string cam_guid_str;
       vimba_camera_ptr_->GetSerialNumber(cam_guid_str);
       assert(cam_guid_str == guid_str);
+      updater_.setHardwareID(guid_str);
+      guid_ = guid_str;
+      diagnostic_msg_ = "GUID " + cam_guid_str + " matches for camera with IP: " + ip_str;
       ROS_INFO_STREAM("GUID " << cam_guid_str << " matches for camera with IP: " << ip_str);
     }
   } else if (!guid_str.empty()) {
     // Only guid available
+    diagnostic_msg_ = "Trying to open camera by ID: " + guid_str;
     ROS_INFO_STREAM("Trying to open camera by ID: " << guid_str);
     vimba_camera_ptr_ = openCamera(guid_str);
+    updater_.setHardwareID(guid_str);
+    guid_ = guid_str;
   } else {
     // No identifying info (GUID and IP) are available
+    diagnostic_msg_ = "Can't connect to the camera: at least GUID or IP need to be set.";
     ROS_ERROR("Can't connect to the camera: at least GUID or IP need to be set.");
+    camera_state_ = ERROR;
   }
+  updater_.update();
 
   // From the SynchronousGrab API example:
   // TODO Set the GeV packet size to the highest possible value
@@ -118,7 +153,7 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 
   std::string trigger_source;
   getFeatureValue("TriggerSource", trigger_source);
-  ROS_INFO_STREAM("[" << ros::this_node::getName()
+  ROS_INFO_STREAM("[" << name_
                   << "]: Trigger mode is " << trigger_source);
   int trigger_source_int = getTriggerModeInt(trigger_source);
 
@@ -128,11 +163,17 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
     // Create a frame observer for this camera
     vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
       boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1));
+    camera_state_ = IDLE;
   } else {
+    diagnostic_msg_ = "Trigger mode " +
+                    std::string(TriggerMode[trigger_source_int]) +
+                    " not implemented.";
     ROS_ERROR_STREAM("Trigger mode " <<
                     TriggerMode[trigger_source_int] <<
                     " not implemented.");
+    camera_state_ = ERROR;
   }
+  updater_.update();
 }
 
 void AvtVimbaCamera::startImaging(void) {
@@ -142,17 +183,22 @@ void AvtVimbaCamera::startImaging(void) {
       vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
       IFrameObserverPtr(vimba_frame_observer_ptr_));
     if (VmbErrorSuccess == err) {
-      ROS_INFO_STREAM("[" << ros::this_node::getName()
+      diagnostic_msg_ = "Starting continuous image acquisition";
+      ROS_INFO_STREAM("[" << name_
         << "]: Starting continuous image acquisition...(" << frame_id_ << ")");
       streaming_ = true;
+      camera_state_ = OK;
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName()
+      diagnostic_msg_ = "Could not start continuous image acquisition. Error: " + api_.errorCodeToMessage(err);
+      ROS_ERROR_STREAM("[" << name_
         << "]: Could not start continuous image acquisition(" << frame_id_ << "). "
         << "\n Error: " << api_.errorCodeToMessage(err));
+      camera_state_ = ERROR;
     }
   } else {
     ROS_WARN_STREAM("Start imaging called, but the camera is already imaging(" << frame_id_ << ").");
   }
+  updater_.update();
 }
 
 void AvtVimbaCamera::stopImaging(void) {
@@ -160,17 +206,22 @@ void AvtVimbaCamera::stopImaging(void) {
     VmbErrorType err =
       vimba_camera_ptr_->StopContinuousImageAcquisition();
     if (VmbErrorSuccess == err) {
-      ROS_INFO_STREAM("[" << ros::this_node::getName()
+      diagnostic_msg_ = "Acquisition stopped";
+      ROS_INFO_STREAM("[" << name_
         << "]: Acquisition stoppped... (" << frame_id_ << ")");
       streaming_ = false;
+      camera_state_ = IDLE;
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName()
+      diagnostic_msg_ = "Could not stop image acquisition. Error: " + api_.errorCodeToMessage(err);
+      ROS_ERROR_STREAM("[" << name_
         << "]: Could not stop image acquisition (" << frame_id_ << ")."
         << "\n Error: " << api_.errorCodeToMessage(err));
+      camera_state_ = ERROR;
     }
   } else {
     ROS_WARN_STREAM("Stop imaging called, but the camera is already stopped (" << frame_id_ << ").");
   }
+  updater_.update();
 }
 
 void AvtVimbaCamera::updateConfig(Config& config) {
@@ -181,11 +232,12 @@ void AvtVimbaCamera::updateConfig(Config& config) {
   if (streaming_) {
     stopImaging();
     ros::Duration(0.5).sleep(); // sleep for half a second
-  } 
+  }
 
   if (on_init_) {
     config_ = config;
   }
+  diagnostic_msg_ = "Updating configuration";
   ROS_INFO_STREAM("Updating configuration for camera " << config.frame_id);
   updateExposureConfig(config);
   updateGainConfig(config);
@@ -234,7 +286,7 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
     camera->GetInterfaceType(cam_int_type);
     err = camera->GetPermittedAccess(accessMode);
 
-    ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: Opened camera with"
+    ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
     << "\n\t\t * Name     : " << cam_name
     << "\n\t\t * Model    : " << cam_model
     << "\n\t\t * ID       : " << cam_id
@@ -247,33 +299,38 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
     if (VmbErrorSuccess == err) {
       //printAllCameraFeatures(camera);
       opened_ = true;
+      camera_state_ = IDLE;
     } else {
-      ROS_ERROR_STREAM("[" << ros::this_node::getName()
+      ROS_ERROR_STREAM("[" << name_
         << "]: Could not get camera " << id_str
         << "\n Error: " << api_.errorCodeToMessage(err));
+      camera_state_ = CAMERA_NOT_FOUND;
     }
   } else {
-    ROS_ERROR_STREAM("[" << ros::this_node::getName()
+    ROS_ERROR_STREAM("[" << name_
       << "]: Could not get camera " << id_str
       << "\n Error: " << api_.errorCodeToMessage(err));
+    camera_state_ = CAMERA_NOT_FOUND;
   }
   return camera;
 }
 
 void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   boost::mutex::scoped_lock lock(config_mutex_);
+  camera_state_ = OK;
+  diagnostic_msg_ = "Camera operating normally";
+
   // Call the callback implemented by other classes
   userFrameCallback(vimba_frame_ptr);
 
   // Queue the frame so that we can receive a new one.
   vimba_camera_ptr_->QueueFrame(vimba_frame_ptr);
+  updater_.update();
 }
 
 double AvtVimbaCamera::getTimestamp(void) {
   double timestamp = -1.0;
-  ROS_INFO_STREAM("going to run coommmannd");
   if (runCommand("GevTimestampControlLatch")) {
-    ROS_INFO_STREAM("command successfusl");
     VmbInt64_t freq, ticks;
     getFeatureValue("GevTimestampTickFrequency", freq);
     getFeatureValue("GevTimestampValue", ticks);
@@ -333,12 +390,12 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
         }
       }
     } else {
-      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << name_ << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_WARN_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str);
   }
   if (show_debug_prints_)
@@ -387,12 +444,12 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str,
         }
       }
     } else {
-      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << name_ << "]: Feature "
                        << feature_str
                        << " is not readable.");
     }
   } else {
-    ROS_WARN_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str);
   }
   ROS_DEBUG_STREAM("Asking for feature " << feature_str
@@ -425,11 +482,11 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
               if (available) {
                 err = vimba_feature_ptr->SetValue(val);
               } else {
-                ROS_WARN_STREAM("[" << ros::this_node::getName()
+                ROS_WARN_STREAM("[" << name_
                   << "]: Feature " << feature_str << " is available now.");
               }
             } else {
-              ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+              ROS_WARN_STREAM("[" << name_ << "]: Feature "
                 << feature_str << ": value unavailable\n\tERROR "
                 << api_.errorCodeToMessage(err));
             }
@@ -437,21 +494,21 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
             err = vimba_feature_ptr->SetValue(val);
           }
         } else {
-          ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+          ROS_WARN_STREAM("[" << name_ << "]: Feature "
             << feature_str << ": Bad data type\n\tERROR "
             << api_.errorCodeToMessage(err));
         }
       } else {
-        ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+        ROS_WARN_STREAM("[" << name_ << "]: Feature "
                          << feature_str
                          << " is not writable.");
       }
     } else {
-      ROS_WARN_STREAM("[" << ros::this_node::getName() << "]: Feature "
+      ROS_WARN_STREAM("[" << name_ << "]: Feature "
         << feature_str << ": ERROR " << api_.errorCodeToMessage(err));
     }
   } else {
-    ROS_WARN_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str
       << "\n Error: " << api_.errorCodeToMessage(err));
   }
@@ -478,12 +535,12 @@ bool AvtVimbaCamera::runCommand(const std::string& command_str) {
       ROS_INFO_STREAM("Command " << command_str.c_str() << " done!");
       return true;
     } else {
-      ROS_WARN_STREAM("[" << ros::this_node::getName()
+      ROS_WARN_STREAM("[" << name_
       << "]: Could not run command " << command_str << ". Error: " << api_.errorCodeToMessage(err));
       return false;
     }
   } else {
-    ROS_WARN_STREAM("[" << ros::this_node::getName()
+    ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature command " << command_str << ". Error: " << api_.errorCodeToMessage(err));
     return false;
   }
@@ -1028,6 +1085,46 @@ void AvtVimbaCamera::updateGPIOConfig(Config& config) {
       << "\n\tSyncOutPolarity : " << config.sync_out_polarity << " was " << config_.sync_out_polarity
       << "\n\tSyncOutSelector : " << config.sync_out_selector << " was " << config_.sync_out_selector
       << "\n\tSyncOutSource   : " << config.sync_out_source   << " was " << config_.sync_out_source);
+  }
+}
+
+void AvtVimbaCamera::getCurrentState(diagnostic_updater::DiagnosticStatusWrapper &stat) {
+  stat.add("Serial", guid_);
+  stat.add("Info", diagnostic_msg_);
+  // stat.add("Intrinsics", intrinsics_);
+  // stat.add("Total frames dropped", frames_dropped_total_);
+  // stat.add("Total frames", frames_completed_total_);
+
+  // if (frames_completed_total_ > 0) {
+  //   stat.add("Total % frames dropped", 100.*(double)frames_dropped_total_/frames_completed_total_);
+  // }
+
+  // if (frames_completed_acc_.sum() > 0) {
+  //   stat.add("Recent % frames dropped", 100.*frames_dropped_acc_.sum()/frames_completed_acc_.sum());
+  // }
+
+  switch (camera_state_) {
+    case OPENING:
+      stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Opening camera");
+      break;
+    case IDLE:
+      stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Camera is idle");
+      break;
+    case OK:
+      stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Camera is streaming");
+      break;
+    case CAMERA_NOT_FOUND:
+      stat.summaryf(diagnostic_msgs::DiagnosticStatus::ERROR, "Cannot find requested camera %s", guid_.c_str());
+      // stat.add("Available Cameras", getAvailableCameras());
+      break;
+    case FORMAT_ERROR:
+      stat.summary(diagnostic_msgs::DiagnosticStatus::ERROR, "Problem retrieving frame");
+      break;
+    case ERROR:
+      stat.summary(diagnostic_msgs::DiagnosticStatus::ERROR, "Camera has encountered an error");
+      break;
+    default:
+      break;
   }
 }
 }
