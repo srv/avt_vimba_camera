@@ -48,6 +48,9 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   // Set the image publishers before the streaming
   left_pub_  = it_.advertiseCamera("left/image_raw",  1);
   right_pub_ = it_.advertiseCamera("right/image_raw", 1);
+  left_frames_ = 0;
+  right_frames_ = 0;
+  synced_frames_ = 0;
 
   // Set the frame callbacks
   left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
@@ -72,16 +75,14 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
   updater_.broadcast(0, "Device is closed.");
-  double min_freq = 5;
-  double max_freq = 25;
+  double min_freq = 2.0;
+  double max_freq = 20.0;
   diagnostic_updater::FrequencyStatusParam freq_params(&min_freq, &max_freq, 0.1, 10);
-  double min_stamp = -1;
-  double max_stamp = 5;
+  double min_stamp = 0.001;
+  double max_stamp = 1.0;
   diagnostic_updater::TimeStampStatusParam stamp_params(min_stamp, max_stamp);
-  pub_freq_ = new diagnostic_updater::TopicDiagnostic("right/image_raw", updater_, freq_params, stamp_params);
-  sync_check_ = new diagnostic_updater::FunctionDiagnosticTask("Sync check", boost::bind(&avt_vimba_camera::StereoCamera::syncDiagnostic, this, _1));
-
-  updater_.addTask(&sync_check_);
+  // pub_freq_ = new diagnostic_updater::TopicDiagnostic("Stereo Image Pair", updater_, freq_params, stamp_params);
+  updater_.add("Synchronization", boost::bind(&avt_vimba_camera::StereoCamera::syncDiagnostic, this, _1));
   updater_.update();
 
   // Set camera info managers
@@ -152,7 +153,7 @@ void StereoCamera::sync(void) {
       right_img_.header.stamp = ros_time;
       left_pub_.publish(left_img_, lci);
       right_pub_.publish(right_img_, rci);
-      pub_freq_->tick(ros_time);
+      // pub_freq_->tick(ros_time);
       right_ready_ = false;
       left_ready_ = false;
     }
@@ -285,5 +286,10 @@ void StereoCamera::syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &s
   stat.add("Number of right frames", right_frames_);
   stat.add("Number of sync'd frames", synced_frames_);
   stat.add("Dropped % sync'd frames", 2 * (double)synced_frames_ / ((double)left_frames_ + (double)right_frames_));
+
+  if (synced_frames_ <= left_frames_)
+    stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Sync'd images.");
+  else
+    stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Wrong synchronization");
 }
 };
