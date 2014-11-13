@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   polled_camera
 )
 
+add_definitions(--std=c++11)
+
 #Get architecture
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(TargetArchitecture)
