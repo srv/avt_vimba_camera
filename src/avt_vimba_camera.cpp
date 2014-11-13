@@ -84,8 +84,7 @@ static const char* State[] = {
   "Ok"};
 
 
-AvtVimbaCamera::AvtVimbaCamera() {
-  AvtVimbaCamera(ros::this_node::getName().c_str());
+AvtVimbaCamera::AvtVimbaCamera() : AvtVimbaCamera(ros::this_node::getName()) {
 }
 
 AvtVimbaCamera::AvtVimbaCamera(std::string name) {
@@ -473,7 +472,7 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
       if (writable) {
         ROS_DEBUG_STREAM("Setting feature " << feature_str << " value " << val);
         VmbFeatureDataType data_type;
-        err == vimba_feature_ptr->GetDataType(data_type);
+        err = vimba_feature_ptr->GetDataType(data_type);
         if (VmbErrorSuccess == err) {
           if (data_type == VmbFeatureDataEnum) {
             bool available;
