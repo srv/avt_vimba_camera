@@ -2,8 +2,8 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.9 (2014-11-17)
+------------------
 * Fix `#8 <https://github.com/srv/avt_vimba_camera/issues/8>`_: Constructor delegation and typo in assignment
 * added mono camera name
 * corrected diagnostics
