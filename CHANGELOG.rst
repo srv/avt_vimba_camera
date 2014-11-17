@@ -2,6 +2,50 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Fix `#8 <https://github.com/srv/avt_vimba_camera/issues/8>`_: Constructor delegation and typo in assignment
+* added mono camera name
+* corrected diagnostics
+* fixed sync diagnostic
+* improved diagnostics
+* better timestamp management
+* added command error check
+* cleaning stereo prints
+* removed old cpp
+* fixed merging conflict
+* update updater
+* added time to tick function
+* added getTimestamp
+* added reset timestamp command
+* changed errors to warnings
+* added open/close msgs to diagnostics
+* added diagnostics. wip
+* bugfixes
+* full operative stereo camera
+* prepared launchfile for stereo
+* auto set packet size
+* stereo sync
+* preparing for stereo
+* added launchfile
+* hide first run
+* set auto configuration by default
+* fix with ptp mode
+* Fix dynamic reconfigure error with PTP
+* mono camera compiles
+* Fix interface type
+* Merge pull request `#5 <https://github.com/srv/avt_vimba_camera/issues/5>`_ from lucasb-eyer/auto
+  Fix names/values of auto settings.
+* Fix names/values of auto settings.
+* Fix `#2 <https://github.com/srv/avt_vimba_camera/issues/2>`_: Set the highest GeV packet size
+* Merge pull request `#3 <https://github.com/srv/avt_vimba_camera/issues/3>`_ from pkok/single_identifier
+  Allow user to connect by specifying either GUID or IP address.
+* Allow user to connect by specifying either GUID or IP address.
+* wip
+* added testing launchfiles
+* added parameters for sync
+* Contributors: Miquel Massot, Patrick de Kok, SPENCER-Freiburg Laptop
+
 0.0.8 (2014-09-05)
 ------------------
 * readdition of vimba
