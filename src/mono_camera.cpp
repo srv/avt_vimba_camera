@@ -46,6 +46,8 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   // Set the image publisher before the streaming
   pub_  = it_.advertiseCamera("image_raw",  1);
 
+  memory_loaded_ = false;
+
   // Set the frame callback
   cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
 
@@ -58,7 +60,12 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   nhp_.param("show_debug_prints", show_debug_prints_, false);
 
   // Set camera info manager
-  info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
+  info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nh_, frame_id, camera_info_url_));
+
+  // Service call for setting calibration.
+  set_camera_info_srv_ = nhp_.advertiseService("set_camera_info",
+                                               &MonoCamera::setCameraInfo,
+                                               this);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
@@ -132,6 +139,30 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   ci.roi.height   = config.roi_height;
   ci.roi.width    = config.roi_width;
 
+  // Load camera_info from camera memory
+  if(!info_man_->isCalibrated() && !memory_loaded_) {
+    ROS_WARN("Failed to load camera_info from file. Trying to load camera_info from camera memory ...");
+
+	UcharVector loaded_data;
+	VmbErrorType result = cam_.loadCameraMemory(loaded_data);
+	if(result == VmbErrorSuccess) {
+	  std::string calibration_data;
+	  for(int i = 0 ; i < loaded_data.size() ; i++)
+	    calibration_data += loaded_data[i];
+
+      std::string cam_name = cam_.getCameraName();
+
+      if(camera_calibration_parsers::parseCalibrationIni(calibration_data, cam_name, ci)) {
+        ROS_INFO("Loaded camera_info from camera memory for camera '%s'.", cam_name.c_str());
+        memory_loaded_ = true;
+      }
+      else
+        ROS_WARN("Failed to parse camera_info from camera memory.");
+    }
+    else
+      ROS_WARN("Failed to load camera_info from camera memory.");
+  }
+
   // set the new URL and load CameraInfo (if any) from it
   std::string camera_info_url;
   nhp_.getParam("camera_info_url", camera_info_url);
@@ -155,5 +186,61 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   // push the changes to manager
   info_man_->setCameraInfo(ci);
 }
+
+bool MonoCamera::setCameraInfo(sensor_msgs::SetCameraInfo::Request& req, sensor_msgs::SetCameraInfo::Response& rsp) {
+  ROS_INFO("New camera_info received.");
+
+  sensor_msgs::CameraInfo &info = req.camera_info;
+
+  if(info.width != info_man_->getCameraInfo().width || info.height != info_man_->getCameraInfo().height)
+  {
+    rsp.success = false;
+    rsp.status_message = (boost::format("camera_info resolution %ix%i does not match current video setting, camera is running at resolution %ix%i.")
+                                        % info.width % info.height % info_man_->getCameraInfo().width % info_man_->getCameraInfo().height).str();
+    ROS_ERROR("%s", rsp.status_message.c_str());
+    return true;
+  }
+
+  std::string cam_name = cam_.getCameraName();
+
+  std::stringstream ini_stream;
+  if(!camera_calibration_parsers::writeCalibrationIni(ini_stream, cam_name, info)) {
+    rsp.status_message = "Error formatting camera_info for storage.";
+    rsp.success = false;
+  }
+  else {
+    std::string ini = ini_stream.str();
+
+    VmbInt64_t lut_size = cam_.getLutMemorySize();
+
+    if(ini.size() > lut_size / 2) {
+      rsp.success = false;
+      rsp.status_message = "Unable to write camera_info to camera memory, exceeded storage capacity.";
+    }
+    else {
+      VmbErrorType status;
+      UcharVector data;
+
+      for(std::string::iterator it = ini.begin() ; it != ini.end() ; it++)
+        data.push_back(*it);
+
+      status = cam_.saveCameraMemory(data);
+      if(status != VmbErrorSuccess) {
+        rsp.success = false;
+        rsp.status_message = "Undefinded write to memory problem.";
+      }
+      else {
+        rsp.success = true;
+        info_man_->setCameraInfo(info);
+      }
+    }
+  }
+
+  if(!rsp.success)
+    ROS_ERROR("%s", rsp.status_message.c_str());
+
+  return true;
+}
+
 
 };

@@ -1127,4 +1127,97 @@ void AvtVimbaCamera::getCurrentState(diagnostic_updater::DiagnosticStatusWrapper
       break;
   }
 }
+
+VmbErrorType AvtVimbaCamera::saveCameraMemory(UcharVector data) {
+  // Get memory address
+  VmbInt64_t memory_address;
+  getFeatureValue("LUTAddress", memory_address);
+
+  // Uchar is 1 byte long - resize it to 2 bytes
+  UcharVector data_to_write;
+  for(UcharVector::iterator it = data.begin() ; it != data.end() ; it++) {
+    data_to_write.push_back(*it);
+    data_to_write.push_back('\0');
+  }
+
+  VmbUint32_t completed_writes = 0;
+  // Convert Little Endian to Big Endian
+  UcharVector converted_data(convertBigEndian(data_to_write));
+
+  // Write to camera memory
+  VmbErrorType status = vimba_camera_ptr_->WriteMemory(memory_address, converted_data, completed_writes);
+
+  FeaturePtr feature;
+  status = vimba_camera_ptr_->GetFeatureByName("LUTSave", feature);
+  if(status != VmbErrorSuccess) {
+    if(status == VmbErrorNotFound) {
+      status = vimba_camera_ptr_->GetFeatureByName("LUTSaveAll", feature);
+    }
+  }
+
+  status = feature->RunCommand();
+  if(status != VmbErrorSuccess)
+    ROS_ERROR("Save LUT command failed.");
+
+  return status;
+}
+
+VmbErrorType AvtVimbaCamera::loadCameraMemory(UcharVector& data) {
+  // Get memory address
+  VmbInt64_t memory_address = 0;
+  getFeatureValue("LUTAddress", memory_address);
+
+  // Get memory size in bytes
+  VmbInt64_t lut_size = 0;
+  getFeatureValue("LUTSizeBytes", lut_size);
+
+  UcharVector tmp_data;
+  tmp_data.resize(static_cast<size_t>(lut_size));
+
+  VmbUint32_t completed_reads = 0;
+  VmbErrorType status;
+
+  FeaturePtr feature;
+  status = vimba_camera_ptr_->GetFeatureByName("LUTLoad", feature);
+  if(status != VmbErrorSuccess) {
+    if(status == VmbErrorNotFound) {
+      status = vimba_camera_ptr_->GetFeatureByName("LUTLoadAll", feature);
+    }
+  }
+
+  // Read camera memory
+  status = vimba_camera_ptr_->ReadMemory(memory_address, tmp_data, completed_reads);
+
+  // Convert Big Endian to Little Endian
+  tmp_data = convertBigEndian(tmp_data);
+
+  // Get only 1 byte from 2 bytes
+  for(UcharVector::iterator it = tmp_data.begin() ; it != tmp_data.end() ; it += 2)
+    data.push_back(*it);
+
+  return status;
+}
+
+UcharVector AvtVimbaCamera::convertBigEndian(const UcharVector& data) {
+  UcharVector tmp(data);
+  for(size_t i = 0 ; i < tmp.size() ; i += 2)
+  {
+    VmbUint16_t *p = reinterpret_cast<VmbUint16_t*>(&tmp[i]);
+    *p = ((*p >> 8) & 0xff) | ((*p << 8) & 0xff00);
+  }
+  return tmp;
+}
+
+std::string AvtVimbaCamera::getCameraName()
+{
+  vimba_camera_ptr_->GetModel(camera_name_);
+  return camera_name_;
+}
+
+VmbInt64_t AvtVimbaCamera::getLutMemorySize()
+{
+  VmbInt64_t lut_size = 0;
+  getFeatureValue("LUTSizeBytes", lut_size);
+  return lut_size;
+}
 }

@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   polled_camera
+  camera_calibration_parsers
 )
 
 #Get architecture

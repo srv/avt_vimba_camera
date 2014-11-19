@@ -91,6 +91,10 @@ class AvtVimbaCamera {
   int getMaxWidth();
   int getMaxHeight();
 
+  std::string getCameraName();
+
+  VmbInt64_t getLutMemorySize();
+
   // Pass callback function pointer
   typedef boost::function<void (const FramePtr)> frameCallbackFunc;
   void setCallback(frameCallbackFunc callback = &avt_vimba_camera::AvtVimbaCamera::defaultFrameCallback) {
@@ -102,6 +106,13 @@ class AvtVimbaCamera {
   void startImaging(void);
   void stopImaging(void);
   bool isOpened(void) { return opened_; }
+
+  // Save camera_info to camera memory
+  VmbErrorType saveCameraMemory(UcharVector data);
+  // Load camera_info from camera_memory
+  VmbErrorType loadCameraMemory(UcharVector& data);
+  // Convert between Big Endian and Little Endian
+  UcharVector convertBigEndian(const UcharVector& data);
 
  private:
   Config config_;
@@ -126,6 +137,8 @@ class AvtVimbaCamera {
   bool on_init_;
   bool show_debug_prints_;
   std::string name_;
+
+  std::string camera_name_;
 
   diagnostic_updater::Updater updater_;
   CameraState camera_state_;
