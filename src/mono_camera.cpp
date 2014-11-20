@@ -152,7 +152,9 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
 
       std::string cam_name = cam_.getCameraName();
 
-      if(camera_calibration_parsers::parseCalibrationIni(calibration_data, cam_name, ci)) {
+      std::stringstream yml_stream;
+      yml_stream << calibration_data;
+      if(camera_calibration_parsers::readCalibrationYml(yml_stream, cam_name, ci)) {
         ROS_INFO("Loaded camera_info from camera memory for camera '%s'.", cam_name.c_str());
         memory_loaded_ = true;
       }
@@ -203,26 +205,30 @@ bool MonoCamera::setCameraInfo(sensor_msgs::SetCameraInfo::Request& req, sensor_
 
   std::string cam_name = cam_.getCameraName();
 
-  std::stringstream ini_stream;
-  if(!camera_calibration_parsers::writeCalibrationIni(ini_stream, cam_name, info)) {
+  std::stringstream yml_stream;
+  if(!camera_calibration_parsers::writeCalibrationYml(yml_stream, cam_name, info)) {
     rsp.status_message = "Error formatting camera_info for storage.";
     rsp.success = false;
   }
   else {
-    std::string ini = ini_stream.str();
+    std::string yml = yml_stream.str();
 
     VmbInt64_t lut_size = cam_.getLutMemorySize();
 
-    if(ini.size() > lut_size / 2) {
+    if(yml.size() > lut_size / 2) {
       rsp.success = false;
       rsp.status_message = "Unable to write camera_info to camera memory, exceeded storage capacity.";
     }
     else {
       VmbErrorType status;
       UcharVector data;
+      data.resize(static_cast<size_t>(lut_size / 2), ' ');
 
-      for(std::string::iterator it = ini.begin() ; it != ini.end() ; it++)
-        data.push_back(*it);
+      int index = 0;
+      for(std::string::iterator it = yml.begin() ; it != yml.end() ; it++) {
+        data[index] = *it;
+        index++;
+      }
 
       status = cam_.saveCameraMemory(data);
       if(status != VmbErrorSuccess) {

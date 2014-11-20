@@ -1137,7 +1137,7 @@ VmbErrorType AvtVimbaCamera::saveCameraMemory(UcharVector data) {
   UcharVector data_to_write;
   for(UcharVector::iterator it = data.begin() ; it != data.end() ; it++) {
     data_to_write.push_back(*it);
-    data_to_write.push_back('\0');
+    data_to_write.push_back(' ');
   }
 
   VmbUint32_t completed_writes = 0;

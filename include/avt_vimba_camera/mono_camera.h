@@ -37,7 +37,7 @@
 #include <avt_vimba_camera/AvtVimbaCameraConfig.h>
 #include <avt_vimba_camera/avt_vimba_api.h>
 
-#include <camera_calibration_parsers/parse_ini.h>
+#include <camera_calibration_parsers/parse_yml.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
