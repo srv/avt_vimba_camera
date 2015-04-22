@@ -149,8 +149,10 @@ void StereoCamera::sync(void) {
 
       lci.header.stamp = ros_time;
       left_img_.header.stamp = ros_time;
+      left_img_.header.frame_id = lci.header.frame_id;
       rci.header.stamp = ros_time;
       right_img_.header.stamp = ros_time;
+      right_img_.header.frame_id = rci.header.frame_id;
       left_pub_.publish(left_img_, lci);
       right_pub_.publish(right_img_, rci);
       // pub_freq_->tick(ros_time);

@@ -77,6 +77,7 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
     if (api_.frameToImage(vimba_frame_ptr, img)) {
       sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
       ci.header.stamp = img.header.stamp = ros_time;
+      img.header.frame_id = ci.header.frame_id;
       pub_.publish(img, ci);
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
