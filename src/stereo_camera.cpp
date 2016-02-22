@@ -72,6 +72,9 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("slave_in_source", slave_in_source_, std::string("SyncIn1"));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
 
+  set_feature_srv_ = nhp_.advertiseService("set_feature", &StereoCamera::setFeatureSrv, this);
+  get_feature_srv_ = nhp_.advertiseService("get_feature", &StereoCamera::getFeatureSrv, this);
+
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
   updater_.broadcast(0, "Device is closed.");
@@ -293,5 +296,18 @@ void StereoCamera::syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &s
     stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Sync'd images.");
   else
     stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Wrong synchronization");
+}
+
+bool StereoCamera::getFeatureSrv(
+    avt_vimba_camera::GetFeature::Request& req,
+    avt_vimba_camera::GetFeature::Response& res) {
+  ROS_INFO_STREAM("Request to get " << req.name << ".");
+  return left_cam_.getFeatureValue(req.name, res.value);
+}
+bool StereoCamera::setFeatureSrv(
+    avt_vimba_camera::SetFeature::Request& req,
+    avt_vimba_camera::SetFeature::Response& res) {
+  ROS_INFO_STREAM("Request to set " << req.name << " to "<< req.value);
+  return left_cam_.setFeatureValue(req.name, req.value) && right_cam_.setFeatureValue(req.name, req.value);
 }
 };

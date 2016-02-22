@@ -24,7 +24,8 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>polled_camera</build_depend>
-  <!--build_depend>libvimba</build_depend-->
+  <build_depend>message_generation</build_depend>
+
   <run_depend>camera_info_manager</run_depend>
   <run_depend>diagnostic_updater</run_depend>
   <run_depend>driver_base</run_depend>
@@ -35,6 +36,6 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>polled_camera</run_depend>
-  <!--run_depend>libvimba</run_depend-->
+  <run_depend>message_runtime</run_depend>
 
 </package>

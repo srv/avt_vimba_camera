@@ -5,9 +5,9 @@
 	</group>
 
 	<node name="camera" pkg="avt_vimba_camera" type="mono_camera_node" output="screen">
-		<param name="guid" value="50-0503343290"/>
+		<param name="guid" value="50-0503343289"/>
 		<param name="ip_address" value=""/>
-		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343290.yaml"/>
+		<param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343289.yaml"/>
 		<param name="frame_id" value="left_optical"/>
 		<param name="trig_timestamp_topic" value=""/>
 		<param name="show_debug_prints" value="true"/>
@@ -46,17 +46,17 @@
 		-->
 		<param name="pixel_format" value="BayerRG8"/>
 		<!-- Exposure in us -->
-		<param name="exposure" value="1000"/>
+		<param name="exposure" value="4000"/>
 		<!-- Gain in dB -->
-		<param name="gain" value="0"/>
+		<param name="gain" value="10"/>
 
 		<!-- Auto control
 			1. Off
 			2. Once
 			3. Continuous
 		-->
-		<param name="exposure_auto" value="Continuous"/>
-		<param name="gain_auto" value="Continuous"/>
+		<param name="exposure_auto" value="Off"/>
+		<param name="gain_auto" value="Off"/>
 		<param name="whitebalance_auto" value="Continuous"/>
 
 		<param name="binning_x" value="1"/>

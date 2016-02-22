@@ -56,6 +56,8 @@ MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(
   std::string frame_id;
   nhp_.param("frame_id", frame_id, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
+  set_feature_srv_ = nhp_.advertiseService("set_feature", &MonoCamera::setFeatureSrv, this);
+  get_feature_srv_ = nhp_.advertiseService("get_feature", &MonoCamera::getFeatureSrv, this);
 
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
@@ -71,7 +73,7 @@ MonoCamera::~MonoCamera(void) {
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
-  ROS_INFO("Frame callback entered");
+  ROS_INFO_ONCE("Frame callback entered");
   if (pub_.getNumSubscribers() > 0) {
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)) {
@@ -157,4 +159,16 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   info_man_->setCameraInfo(ci);
 }
 
+bool MonoCamera::getFeatureSrv(
+    avt_vimba_camera::GetFeature::Request& req,
+    avt_vimba_camera::GetFeature::Response& res) {
+  ROS_INFO_STREAM("Request to get " << req.name << ".");
+  return cam_.getFeatureValue(req.name, res.value);
+}
+bool MonoCamera::setFeatureSrv(
+    avt_vimba_camera::SetFeature::Request& req,
+    avt_vimba_camera::SetFeature::Response& res) {
+  ROS_INFO_STREAM("Request to set " << req.name << " to "<< req.value);
+  return cam_.setFeatureValue(req.name, req.value);
+}
 };

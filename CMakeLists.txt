@@ -13,12 +13,17 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   polled_camera
+  message_generation
 )
 
 #Get architecture
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(TargetArchitecture)
 target_architecture(ARCH)
+
+add_service_files(DIRECTORY srv FILES GetFeature.srv SetFeature.srv)
+
+generate_messages(DEPENDENCIES std_msgs)
 
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
@@ -27,7 +32,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS camera_info_manager diagnostic_updater driver_base dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera
+  CATKIN_DEPENDS camera_info_manager diagnostic_updater driver_base dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera message_runtime
 )
 
 ###########
@@ -35,7 +40,6 @@ catkin_package(
 ###########
 
 include_directories(
-  #${libvimba_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   include
 )
@@ -43,7 +47,7 @@ include_directories(
 function(add_dependencies_and_linkings arg)
   add_dependencies(${arg}
     ${PROJECT_NAME}_gencfg
-    #${libvimba_EXPORTED_TARGETS}
+    ${PROJECT_NAME}_gencpp
   )
 
   if("${ARCH}" STREQUAL i386)
@@ -63,21 +67,23 @@ function(add_dependencies_and_linkings arg)
   endif()
 endfunction(add_dependencies_and_linkings)
 
+add_library(avt_camera
+  src/avt_vimba_camera.cpp
+  src/frame_observer.cpp)
+
 add_executable(mono_camera_node
   src/nodes/mono_camera_node.cpp
-  src/mono_camera.cpp
-  src/avt_vimba_camera.cpp
-  src/frame_observer.cpp
-)
+  src/mono_camera.cpp)
+
+target_link_libraries(mono_camera_node avt_camera)
 
 add_dependencies_and_linkings(mono_camera_node)
 
 add_executable(stereo_camera_node
   src/nodes/stereo_camera_node.cpp
-  src/stereo_camera.cpp
-  src/avt_vimba_camera.cpp
-  src/frame_observer.cpp
-)
+  src/stereo_camera.cpp)
+
+target_link_libraries(stereo_camera_node avt_camera)
 
 add_dependencies_and_linkings(stereo_camera_node)
 
@@ -119,3 +125,8 @@ elseif("${ARCH}" STREQUAL x86_64)
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
 endif()
+
+# Finding headers and launch files for QtCreator
+file(GLOB_RECURSE HDRS ${CMAKE_CURRENT_SOURCE_DIR} *.h *.hpp)
+file(GLOB_RECURSE SRCS ${CMAKE_CURRENT_SOURCE_DIR} *.cxx *.cpp *.c *.py)
+file(GLOB_RECURSE LNCH ${CMAKE_CURRENT_SOURCE_DIR} *.launch)

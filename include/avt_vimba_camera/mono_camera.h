@@ -36,6 +36,8 @@
 #include <avt_vimba_camera/avt_vimba_camera.h>
 #include <avt_vimba_camera/AvtVimbaCameraConfig.h>
 #include <avt_vimba_camera/avt_vimba_api.h>
+#include <avt_vimba_camera/SetFeature.h>
+#include <avt_vimba_camera/GetFeature.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
@@ -84,9 +86,16 @@ class MonoCamera {
   // Camera configuration
   Config camera_config_;
 
+  ros::ServiceServer set_feature_srv_;
+  ros::ServiceServer get_feature_srv_;
+
   void frameCallback(const FramePtr& vimba_frame_ptr);
   void configure(Config& newconfig, uint32_t level);
   void updateCameraInfo(const Config& config);
+  bool getFeatureSrv(avt_vimba_camera::GetFeature::Request& req,
+                     avt_vimba_camera::GetFeature::Response& res);
+  bool setFeatureSrv(avt_vimba_camera::SetFeature::Request& req,
+                     avt_vimba_camera::SetFeature::Response& res);
 };
 }
 #endif

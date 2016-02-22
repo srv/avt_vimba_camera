@@ -102,6 +102,11 @@ class AvtVimbaCamera {
   void startImaging(void);
   void stopImaging(void);
   bool isOpened(void) { return opened_; }
+  template<typename T>
+  bool setFeatureValue(const std::string& feature_str, const T& val);
+  template<typename T>
+  bool getFeatureValue(const std::string& feature_str, T& val);
+  bool getFeatureValue(const std::string& feature_str, std::string& val);
 
  private:
   Config config_;
@@ -145,12 +150,6 @@ class AvtVimbaCamera {
   void defaultFrameCallback(const FramePtr vimba_frame_ptr) {
     std::cout << "[AvtVimbaCamera] No frame callback provided." << std::endl;
   }
-
-  template<typename T>
-  bool setFeatureValue(const std::string& feature_str, const T& val);
-  template<typename T>
-  bool getFeatureValue(const std::string& feature_str, T& val);
-  bool getFeatureValue(const std::string& feature_str, std::string& val);
   bool runCommand(const std::string& command_str);
   std::string interfaceToString(VmbInterfaceType interfaceType);
   std::string accessModeToString(VmbAccessModeType modeType);
@@ -169,7 +168,6 @@ class AvtVimbaCamera {
   void updateGPIOConfig(Config& config);
 
   void getCurrentState(diagnostic_updater::DiagnosticStatusWrapper &stat);
-
 };
 }
 #endif
