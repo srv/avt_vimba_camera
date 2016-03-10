@@ -36,7 +36,7 @@
 
 namespace avt_vimba_camera {
 
-MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_("camera") {
+MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
 

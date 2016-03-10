@@ -153,8 +153,6 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 
   std::string trigger_source;
   getFeatureValue("TriggerSource", trigger_source);
-  ROS_INFO_STREAM("[" << name_
-                  << "]: Trigger mode is " << trigger_source);
   int trigger_source_int = getTriggerModeInt(trigger_source);
 
   if (trigger_source_int == Freerun   ||
@@ -238,7 +236,7 @@ void AvtVimbaCamera::updateConfig(Config& config) {
     config_ = config;
   }
   diagnostic_msg_ = "Updating configuration";
-  ROS_INFO_STREAM("Updating configuration for camera " << config.frame_id);
+  ROS_DEBUG_STREAM("Updating configuration for camera " << config.frame_id);
   updateExposureConfig(config);
   updateGainConfig(config);
   updateWhiteBalanceConfig(config);
@@ -286,7 +284,7 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
     camera->GetInterfaceType(cam_int_type);
     err = camera->GetPermittedAccess(accessMode);
 
-    ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
+    ROS_DEBUG_STREAM("[" << name_ << "]: Opened camera with"
     << "\n\t\t * Name     : " << cam_name
     << "\n\t\t * Model    : " << cam_model
     << "\n\t\t * ID       : " << cam_id
@@ -529,10 +527,10 @@ bool AvtVimbaCamera::runCommand(const std::string& command_str) {
         if ( VmbErrorSuccess != err ) {
           break;
         }
-        ROS_INFO_STREAM_THROTTLE(1, "Waiting for command "
+        ROS_DEBUG_STREAM_THROTTLE(1, "Waiting for command "
           << command_str.c_str() << "...");
       } while ( false == is_command_done );
-      ROS_INFO_STREAM("Command " << command_str.c_str() << " done!");
+      ROS_DEBUG_STREAM("Command " << command_str.c_str() << " done!");
       return true;
     } else {
       ROS_WARN_STREAM("[" << name_
@@ -770,6 +768,7 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
   }
   if (config.trigger_delay != config_.trigger_delay || on_init_) {
     changed = true;
+    std::cout << "Trigger source is: " << config.trigger_source << std::endl;
     setFeatureValue("TriggerDelayAbs", config.trigger_delay);
   }
   if(changed && show_debug_prints_){

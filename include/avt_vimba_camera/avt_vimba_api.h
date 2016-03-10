@@ -179,7 +179,7 @@ class AvtVimbaApi {
         cameras.end() != iter;
         ++iter) {
           if (VmbErrorSuccess == (*iter)->GetName(name)) {
-            ROS_INFO_STREAM("[" << ros::this_node::getName() << "]: Found camera: ");
+            ROS_DEBUG_STREAM("[" << ros::this_node::getName() << "]: Found camera: ");
           }
           std::string strID;            // The ID of the cam
           std::string strName;          // The name of the cam
@@ -214,11 +214,11 @@ class AvtVimbaApi {
           {
               ROS_ERROR_STREAM("[Could not get interface ID. Error code: " << err << "]");
           }
-          ROS_INFO_STREAM("\t/// Camera Name: " << strName);
-          ROS_INFO_STREAM("\t/// Model Name: " << strModelname);
-          ROS_INFO_STREAM("\t/// Camera ID: " << strID);
-          ROS_INFO_STREAM("\t/// Serial Number: " << strSerialNumber);
-          ROS_INFO_STREAM("\t/// @ Interface ID: " << strInterfaceID);
+          ROS_DEBUG_STREAM("\t/// Camera Name: " << strName);
+          ROS_DEBUG_STREAM("\t/// Model Name: " << strModelname);
+          ROS_DEBUG_STREAM("\t/// Camera ID: " << strID);
+          ROS_DEBUG_STREAM("\t/// Serial Number: " << strSerialNumber);
+          ROS_DEBUG_STREAM("\t/// @ Interface ID: " << strInterfaceID);
 
         }
       }
