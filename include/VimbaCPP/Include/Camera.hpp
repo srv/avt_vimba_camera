@@ -1,5 +1,5 @@
 /*=============================================================================
-  Copyright (C) 2012 Allied Vision Technologies.  All Rights Reserved.
+  Copyright (C) 2012 - 2016 Allied Vision Technologies.  All Rights Reserved.
 
   Redistribution of this file, in original or modified form, without
   prior written consent of Allied Vision Technologies is prohibited.
@@ -48,7 +48,7 @@ inline VmbErrorType Camera::GetID( std::string &rStrID ) const
             try
             {
                 std::vector<std::string::value_type>tmpID( nLength + 1,'\0');
-                res     = GetID( &tmpID[0], nLength );
+                res = GetID( &tmpID[0], nLength );
                 if( VmbErrorSuccess == res)
                 {
                     rStrID  = &*tmpID.begin();
@@ -82,7 +82,7 @@ inline VmbErrorType Camera::GetName( std::string &rStrName ) const
             try
             {
                 std::vector<std::string::value_type> tmpName( nLength + 1,'\0' );
-                res         = GetName( &tmpName[0], nLength );
+                res  = GetName( &tmpName[0], nLength );
                 if( VmbErrorSuccess == res)
                 {
                     rStrName    = &*tmpName.begin();
@@ -116,7 +116,7 @@ inline VmbErrorType Camera::GetModel( std::string &rStrModel ) const
             try
             {
                 std::vector<std::string::value_type> tmpModel( nLength + 1,'\0');
-                res         = GetModel( &tmpModel[0], nLength );
+                res = GetModel( &tmpModel[0], nLength );
                 if( VmbErrorSuccess == res )
                 {
                     rStrModel   = &*tmpModel.begin();
@@ -150,7 +150,7 @@ inline VmbErrorType Camera::GetSerialNumber( std::string &rStrSerial ) const
             try
             {
                 std::vector<std::string::value_type> tmpSerial( nLength + 1,'\0');
-                res         = GetSerialNumber( &tmpSerial[0], nLength );
+                res = GetSerialNumber( &tmpSerial[0], nLength );
                 if( VmbErrorSuccess == res )
                 {
                     rStrSerial  = &*tmpSerial.begin();
@@ -184,7 +184,7 @@ inline VmbErrorType Camera::GetInterfaceID( std::string &rStrInterfaceID ) const
             try
             {
                 std::vector<std::string::value_type> tmpID( nLength + 1,'\0');
-                res             = GetInterfaceID( &tmpID[0], nLength );
+                res = GetInterfaceID( &tmpID[0], nLength );
                 if( VmbErrorSuccess == res )
                 {
                     rStrInterfaceID = &*tmpID.begin();
@@ -291,6 +291,90 @@ inline VmbErrorType Camera::WriteMemory( const VmbUint64_t &rAddress, const Ucha
     }
 
     return WriteMemory( rAddress, &rBuffer[0], (VmbUint32_t)rBuffer.size(), &rCompletedWrites );
+}
+
+inline VmbErrorType Camera::SaveCameraSettings( std::string strFileName, VmbFeaturePersistSettings_t *pSettings ) const
+{
+    VmbErrorType err = VmbErrorSuccess;
+
+//  parameter check
+    if( true == strFileName.empty() )
+    {
+        return VmbErrorBadParameter;
+    }
+
+//  check internal settings struct variables
+    VmbBool_t useInternalStruct = true;
+    if( false == ((0 <= m_persistType) && (3 > m_persistType)) )
+    {
+        useInternalStruct = false;
+    }
+    if( false == ((0 < m_maxIterations) && (10 > m_maxIterations)) )
+    {
+        useInternalStruct = false;
+    }
+    if( false == ((0 < m_loggingLevel) && (5 > m_loggingLevel)) )
+    {
+        useInternalStruct = false;
+    }
+
+//  check if internal struct shall be used
+    if( VmbBoolTrue == useInternalStruct )
+    {
+        VmbFeaturePersistSettings_t newSettings;
+        newSettings.persistType = m_persistType;
+        newSettings.maxIterations = m_maxIterations;
+        newSettings.loggingLevel = m_loggingLevel;
+        err = SaveCameraSettings( strFileName.c_str(), &newSettings );
+    }
+    else
+    {
+        err = SaveCameraSettings( strFileName.c_str(), pSettings );
+    }
+
+    return err;
+}
+
+inline VmbErrorType Camera::LoadCameraSettings( std::string strFileName, VmbFeaturePersistSettings_t *pSettings ) const
+{
+    VmbErrorType err = VmbErrorSuccess;
+
+//  parameter check
+    if( true == strFileName.empty() )
+    {
+        return VmbErrorBadParameter;
+    }
+
+//  check internal settings struct variables
+    VmbBool_t useInternalStruct = true;
+    if( false == ((0 <= m_persistType) && (3 > m_persistType)) )
+    {
+        useInternalStruct = false;
+    }
+    if( false == ((0 < m_maxIterations) && (10 > m_maxIterations)) )
+    {
+        useInternalStruct = false;
+    }
+    if( false == ((0 < m_loggingLevel) && (5 > m_loggingLevel)) )
+    {
+        useInternalStruct = false;
+    }
+
+//  check if internal struct shall be used
+    if( VmbBoolTrue == useInternalStruct )
+    {
+        VmbFeaturePersistSettings_t newSettings;
+        newSettings.persistType = m_persistType;
+        newSettings.maxIterations = m_maxIterations;
+        newSettings.loggingLevel = m_loggingLevel;
+        err = LoadCameraSettings( strFileName.c_str(), &newSettings );
+    }
+    else
+    {
+        err = LoadCameraSettings( strFileName.c_str(), pSettings );
+    }
+
+    return err;
 }
 
 #endif

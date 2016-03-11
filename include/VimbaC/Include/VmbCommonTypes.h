@@ -160,7 +160,8 @@ extern "C" {
         VmbPixelOccupy16Bit =   0x00100000,     // Pixel effectively occupies 16 bits
         VmbPixelOccupy24Bit =   0x00180000,     // Pixel effectively occupies 24 bits
         VmbPixelOccupy32Bit =   0x00200000,     // Pixel effectively occupies 32 bits
-        VmbPixelOccupy48Bit =   0x00300000      // Pixel effectively occupies 48 bits
+        VmbPixelOccupy48Bit =   0x00300000,     // Pixel effectively occupies 48 bits
+        VmbPixelOccupy64Bit =   0x00400000,     // Pixel effectively occupies 48 bits
     } VmbPixelOccupyType;
 
     //
@@ -170,6 +171,7 @@ extern "C" {
     //
     typedef enum VmbPixelFormatType
     {
+        // mono formats
         VmbPixelFormatMono8               = VmbPixelMono  | VmbPixelOccupy8Bit  | 0x0001,  // Monochrome, 8 bits (PFNC:Mono8)
         VmbPixelFormatMono10              = VmbPixelMono  | VmbPixelOccupy16Bit | 0x0003,  // Monochrome, 10 bits in 16 bits (PFNC:Mono10)
         VmbPixelFormatMono10p             = VmbPixelMono  | VmbPixelOccupy10Bit | 0x0046,  // Monochrome, 10 bits in 16 bits (PFNC:Mono10p)
@@ -178,6 +180,7 @@ extern "C" {
         VmbPixelFormatMono12p             = VmbPixelMono  | VmbPixelOccupy12Bit | 0x0047,  // Monochrome, 2x12 bits in 24 bits (PFNC:MonoPacked)
         VmbPixelFormatMono14              = VmbPixelMono  | VmbPixelOccupy16Bit | 0x0025,  // Monochrome, 14 bits in 16 bits (PFNC:Mono14)
         VmbPixelFormatMono16              = VmbPixelMono  | VmbPixelOccupy16Bit | 0x0007,  // Monochrome, 16 bits (PFNC:Mono16)
+        // bayer formats
         VmbPixelFormatBayerGR8            = VmbPixelMono  | VmbPixelOccupy8Bit  | 0x0008,  // Bayer-color, 8 bits, starting with GR line (PFNC:BayerGR8)
         VmbPixelFormatBayerRG8            = VmbPixelMono  | VmbPixelOccupy8Bit  | 0x0009,  // Bayer-color, 8 bits, starting with RG line (PFNC:BayerRG8)
         VmbPixelFormatBayerGB8            = VmbPixelMono  | VmbPixelOccupy8Bit  | 0x000A,  // Bayer-color, 8 bits, starting with GB line (PFNC:BayerGB8)
@@ -206,13 +209,26 @@ extern "C" {
         VmbPixelFormatBayerRG16           = VmbPixelMono  | VmbPixelOccupy16Bit | 0x002F,  // Bayer-color, 16 bits, starting with RG line (PFNC:BayerRG16)
         VmbPixelFormatBayerGB16           = VmbPixelMono  | VmbPixelOccupy16Bit | 0x0030,  // Bayer-color, 16 bits, starting with GB line (PFNC:BayerGB16)
         VmbPixelFormatBayerBG16           = VmbPixelMono  | VmbPixelOccupy16Bit | 0x0031,  // Bayer-color, 16 bits, starting with BG line (PFNC:BayerBG16)
+        // rgb formats
         VmbPixelFormatRgb8                = VmbPixelColor | VmbPixelOccupy24Bit | 0x0014,  // RGB, 8 bits x 3 (PFNC:RGB8)
         VmbPixelFormatBgr8                = VmbPixelColor | VmbPixelOccupy24Bit | 0x0015,  // BGR, 8 bits x 3 (PFNC:BGR8)
+        VmbPixelFormatRgb10               = VmbPixelColor | VmbPixelOccupy48Bit | 0x0018,  // RGB, 12 bits in 16 bits x 3 (PFNC:RGB12)
+        VmbPixelFormatBgr10               = VmbPixelColor | VmbPixelOccupy48Bit | 0x0019,  // RGB, 12 bits in 16 bits x 3 (PFNC:RGB12)
+        VmbPixelFormatRgb12               = VmbPixelColor | VmbPixelOccupy48Bit | 0x001A,  // RGB, 12 bits in 16 bits x 3 (PFNC:RGB12)
+        VmbPixelFormatBgr12               = VmbPixelColor | VmbPixelOccupy48Bit | 0x001B,  // RGB, 12 bits in 16 bits x 3 (PFNC:RGB12)
+        VmbPixelFormatRgb16               = VmbPixelColor | VmbPixelOccupy48Bit | 0x0033,  // RGB, 16 bits x 3 (PFNC:RGB16)
+        VmbPixelFormatBgr16               = VmbPixelColor | VmbPixelOccupy48Bit | 0x004B,  // RGB, 16 bits x 3 (PFNC:RGB16)
+        // rgba formats
         VmbPixelFormatArgb8               = VmbPixelColor | VmbPixelOccupy32Bit | 0x0016,  // ARGB, 8 bits x 4 (PFNC:RGBa8)
         VmbPixelFormatRgba8               = VmbPixelFormatArgb8,                           // RGBA, 8 bits x 4, legacy name
         VmbPixelFormatBgra8               = VmbPixelColor | VmbPixelOccupy32Bit | 0x0017,  // BGRA, 8 bits x 4 (PFNC:BGRa8)
-        VmbPixelFormatRgb12               = VmbPixelColor | VmbPixelOccupy48Bit | 0x001A,  // RGB, 12 bits in 16 bits x 3 (PFNC:RGB12)
-        VmbPixelFormatRgb16               = VmbPixelColor | VmbPixelOccupy48Bit | 0x0033,  // RGB, 16 bits x 3 (PFNC:RGB16)
+        VmbPixelFormatRgba10              = VmbPixelColor | VmbPixelOccupy64Bit | 0x005F,                           // RGBA, 8 bits x 4, legacy name
+        VmbPixelFormatBgra10              = VmbPixelColor | VmbPixelOccupy64Bit | 0x004C,                           // RGBA, 8 bits x 4, legacy name
+        VmbPixelFormatRgba12              = VmbPixelColor | VmbPixelOccupy64Bit | 0x0061,                           // RGBA, 8 bits x 4, legacy name
+        VmbPixelFormatBgra12              = VmbPixelColor | VmbPixelOccupy64Bit | 0x004E,                           // RGBA, 8 bits x 4, legacy name
+        VmbPixelFormatRgba16              = VmbPixelColor | VmbPixelOccupy64Bit | 0x0064,                           // RGBA, 8 bits x 4, legacy name
+        VmbPixelFormatBgra16              = VmbPixelColor | VmbPixelOccupy64Bit | 0x0051,                           // RGBA, 8 bits x 4, legacy name
+        // yuv/ycbcr formats
         VmbPixelFormatYuv411              = VmbPixelColor | VmbPixelOccupy12Bit | 0x001E,  // YUV 411 with 8 bits (GEV:YUV411Packed)
         VmbPixelFormatYuv422              = VmbPixelColor | VmbPixelOccupy16Bit | 0x001F,  // YUV 422 with 8 bits (GEV:YUV422Packed)
         VmbPixelFormatYuv444              = VmbPixelColor | VmbPixelOccupy24Bit | 0x0020,  // YUV 444 with 8 bits (GEV:YUV444Packed)

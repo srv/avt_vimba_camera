@@ -1,5 +1,5 @@
 /*=============================================================================
-  Copyright (C) 2012 Allied Vision Technologies.  All Rights Reserved.
+  Copyright (C) 2012 - 2016 Allied Vision Technologies.  All Rights Reserved.
 
   Redistribution of this file, in original or modified form, without
   prior written consent of Allied Vision Technologies is prohibited.
@@ -231,9 +231,9 @@ public:
     //
     // Method: AnnounceFrames
     //
-    // Purpose: anounce a FramePtrVector to the camera.
+    // Purpose: announce a FramePtrVector to the camera.
     //
-    // Paramters:
+    // Parameters:
     // [in]        Camera          camera to announce the frames to
     // [in,out]    Frames          vector of frame pointers that will contain the announced frames on return, can be empty on input
     // [in]        nBufferCount    number of frames to announce, if nBufferCount > Frames.size() on return, some frames could not be announced
@@ -501,6 +501,9 @@ Camera::Camera( const char *pID,
                 const char *pInterfaceID,
                 VmbInterfaceType eInterfaceType )
     :   m_pImpl( new Impl() )
+    ,   m_persistType( -1 )
+    ,   m_maxIterations( -1 )
+    ,   m_loggingLevel( -1 )
 {
     m_pImpl->m_cameraInfo.cameraIdString.assign( pID ? pID : "" );
     // TODO: Remove this with interface change
@@ -1225,6 +1228,133 @@ VmbErrorType Camera::Impl::AppendFrameToVector( const FramePtr &rFrame )
     catch(...)
     {
         return VmbErrorResources;
+    }
+}
+
+//
+// Method:      SaveCameraSettings()
+//
+// Purpose:     Saves the current camera setup to an XML file
+//
+// Parameters:
+//
+//  [in]    pStrFileName    xml file name
+//  [in]    pSettings       pointer to settings struct
+//
+// Returns:
+//
+//  - VmbErrorSuccess:          If no error
+//  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
+//  - VmbErrorBadHandle:        The given handle is not valid
+//  - VmbErrorInternalFault:    When something unexpected happens in VimbaC function
+//  - VmbErrorOther:            Every other failure in load/save settings implementation class
+//
+VmbErrorType Camera::SaveCameraSettings( const char * const pStrFileName, VmbFeaturePersistSettings_t *pSettings ) const
+{
+    VmbErrorType err = VmbErrorSuccess;
+
+//  parameter check
+    if( NULL == pStrFileName )
+    {
+        return VmbErrorBadParameter;
+    }
+
+//  get handle
+    VmbHandle_t handle = GetHandle();
+
+    if( NULL == pSettings )
+    {
+        err = (VmbErrorType)VmbCameraSettingsSave( handle, pStrFileName, NULL, 0 );
+    }
+    else
+    {
+        err = (VmbErrorType)VmbCameraSettingsSave( handle, pStrFileName, pSettings, sizeof(pSettings) );
+    }
+
+    return err;
+}
+
+//
+// Method:      LoadCameraSettings()
+//
+// Purpose:     Loads the current camera setup from an XML file into the camera
+//
+// Parameters:
+//
+//  [in]    pStrFileName    xml file name
+//  [in]    pSettings       pointer to settings struct
+//
+// Returns:
+//
+//  - VmbErrorSuccess:          If no error
+//  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
+//  - VmbErrorBadHandle:        The given handle is not valid
+//  - VmbErrorInternalFault:    When something unexpected happens in VimbaC function
+//  - VmbErrorOther:            Every other failure in load/save settings implementation class
+//
+VmbErrorType Camera::LoadCameraSettings( const char * const pStrFileName, VmbFeaturePersistSettings_t *pSettings ) const
+{
+    VmbErrorType err = VmbErrorSuccess;
+
+//  parameter check
+    if( NULL == pStrFileName )
+    {
+        return VmbErrorBadParameter;
+    }
+
+//  get handle
+    VmbHandle_t handle = GetHandle();
+
+    if( NULL == pSettings )
+    {
+        err = (VmbErrorType)VmbCameraSettingsLoad( handle, pStrFileName, NULL, 0 );
+    }
+    else
+    {
+        err = (VmbErrorType)VmbCameraSettingsLoad( handle, pStrFileName, pSettings, sizeof(pSettings) );
+    }
+
+    return err;
+}
+
+//
+// Method:      LoadSaveSettingsSetup()
+//
+// Purpose:     Sets Load/Save settings behaviour (alternative to settings struct)
+//
+// Parameters:
+//
+//  [in]    persistType      determines which feature shall be considered during load/save settings
+//  [in]    maxIterations    determines how many 'tries' during loading feature values shall be performed
+//  [in]    loggingLevel     determines level of detail for load/save settings logging
+//
+void Camera::LoadSaveSettingsSetup( VmbFeaturePersist_t persistType, VmbUint32_t maxIterations, VmbUint32_t loggingLevel )
+{
+    if( true == ((VmbFeaturePersistAll != persistType) && (VmbFeaturePersistStreamable != persistType) && (VmbFeaturePersistNoLUT != persistType)) )
+    {
+        m_persistType = VmbFeaturePersistNoLUT;
+    }
+    else
+    {
+        m_persistType = persistType;
+    }
+
+    if( false == ((0 < maxIterations) && (6 > maxIterations)) )
+    {
+        m_maxIterations = 5;
+    }
+    else
+    {
+        m_maxIterations = maxIterations;
+    }
+
+    if( false == ((0 < loggingLevel) && (5 > loggingLevel)) )
+    {
+        m_loggingLevel = 4;
+    }
+    else
+    {
+        m_loggingLevel = loggingLevel;
     }
 }
 

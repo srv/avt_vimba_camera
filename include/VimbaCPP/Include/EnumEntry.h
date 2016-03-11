@@ -75,14 +75,14 @@ class EnumEntry
     //
     IMEXPORT EnumEntry();
     //
-    // Method:      Copy constructor
+    // Method:      EnumEntry copy constructor
     //
     // Purpose:     Creates a copy of class EnumEntry
     //
     IMEXPORT EnumEntry( const EnumEntry &other);
     
     //
-    // Method:      assignment operator
+    // Method:      EnumEntry assignment operator
     //
     // Purpose:     assigns EnumEntry to existing instance
     //

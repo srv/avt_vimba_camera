@@ -81,7 +81,7 @@
         #define VMB_CALL
     #endif
 #elif defined (__APPLE__)
-    #define IMEXPORTC
+    #define IMEXPORTC __attribute__((visibility("default")))
     // Calling convention
     #define VMB_CALL
 #else
@@ -110,6 +110,7 @@ typedef enum VmbInterfaceType
     VmbInterfaceFirewire     = 1,           // 1394
     VmbInterfaceEthernet     = 2,           // GigE
     VmbInterfaceUsb          = 3,           // USB 3.0
+    VmbInterfaceCL           = 4,           // Camera Link
 } VmbInterfaceType;
 typedef VmbUint32_t VmbInterface_t;         // Type for an Interface; for values see VmbInterfaceType
 
@@ -453,7 +454,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbCamerasList ( VmbCameraInfo_t*   pCameraInfo,
 //              "DEV_81237473991" for an ID given by a transport layer,
 //              "169.254.12.13" for an IP address,
 //              "000F314C4BE5" for a MAC address or 
-//              "1234567890" for a plain serial number.
+//              "DEV_1234567890" for an ID as reported by Vimba
 //
 IMEXPORTC VmbError_t VMB_CALL VmbCameraInfoQuery ( const char*         idString,
                                                    VmbCameraInfo_t*    pInfo,
@@ -485,7 +486,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbCameraInfoQuery ( const char*         idString,
 //              "DEV_81237473991" for an ID given by a transport layer,
 //              "169.254.12.13" for an IP address,
 //              "000F314C4BE5" for a MAC address or 
-//              "1234567890" for a plain serial number.
+//              "DEV_1234567890" for an ID as reported by Vimba
 //
 IMEXPORTC VmbError_t VMB_CALL VmbCameraOpen ( const char*      idString,
                                               VmbAccessMode_t  accessMode,
@@ -1867,6 +1868,79 @@ IMEXPORTC VmbError_t VMB_CALL VmbRegistersWrite ( const VmbHandle_t   handle,
                                                   const VmbUint64_t*  pAddressArray,
                                                   const VmbUint64_t*  pDataArray,
                                                   VmbUint32_t*        pNumCompleteWrites );
+
+//
+//  enum type for VmbCameraSettingsSave() which determines which feature shall persisted (saved) to XML file.
+//
+typedef enum VmbFeaturePersistType
+{
+    VmbFeaturePersistAll        = 0,
+    VmbFeaturePersistStreamable = 1,
+    VmbFeaturePersistNoLUT      = 2
+} VmbFeaturePersistType;
+typedef VmbUint32_t VmbFeaturePersist_t;
+
+//
+//  struct type to collect all settings for VmbCameraSettingsSave and VmbCameraSettingsLoad
+//
+typedef struct
+{
+    VmbFeaturePersist_t persistType;
+    VmbUint32_t maxIterations;
+    VmbUint32_t loggingLevel;
+} VmbFeaturePersistSettings_t;
+
+//
+// Method:      VmbCameraSettingsSave()
+//
+// Purpose:     Saves all feature values to XML file.
+//
+// Parameters:
+//
+//  [in ]  const VmbHandle_t             handle              Handle for an entity that allows register access
+//  [in ]  const char*                   fileName            Name of XML file to save settings
+//  [in ]  VmbFeaturePersistSettings_t*  pSettings           Settings struct
+//  [in ]  VmbUint32_t                   sizeofSettings      Size of settings struct
+//
+// Returns:
+//
+//  - VmbErrorSuccess:       If no error
+//  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
+//  - VmbErrorBadHandle:     The given handle is not valid
+//  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorBadParameter:  if fileName is NULL
+//
+// Details:     Camera must be opened beforehand and function needs corresponding handle.
+//              With given filename parameter path and name of XML file can be determined.
+//              Additionally behaviour of function can be set with providing 'persistent struct'.
+//
+IMEXPORTC VmbError_t VMB_CALL VmbCameraSettingsSave( const VmbHandle_t handle, const char *fileName, VmbFeaturePersistSettings_t *pSettings, VmbUint32_t sizeofSettings );
+
+//
+// Method:      VmbCameraSettingsLoad()
+//
+// Purpose:     Load all feature values from XML file to device.
+//
+// Parameters:
+//
+//  [in ]  const VmbHandle_t             handle              Handle for an entity that allows register access
+//  [in ]  const char*                   fileName            Name of XML file to save settings
+//  [in ]  VmbFeaturePersistSettings_t*  pSettings           Settings struct
+//  [in ]  VmbUint32_t                   sizeofSettings      Size of settings struct
+//
+// Returns:
+//
+//  - VmbErrorSuccess:       If no error
+//  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
+//  - VmbErrorBadHandle:     The given handle is not valid
+//  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorBadParameter:  if fileName is NULL
+//
+// Details:     Camera must be opened beforehand and function needs corresponding handle.
+//              With given filename parameter path and name of XML file can be determined.
+//              Additionally behaviour of function can be set with providing 'settings struct'.
+//
+IMEXPORTC VmbError_t VMB_CALL VmbCameraSettingsLoad( const VmbHandle_t handle, const char *fileName, VmbFeaturePersistSettings_t *pSettings, VmbUint32_t sizeofSettings );
 
 #ifdef __cplusplus
 }
