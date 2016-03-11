@@ -13,9 +13,9 @@
 ///     * All advertising materials mentioning features or use of this software
 ///       must display the following acknowledgement:
 ///       This product includes software developed by
-///       Systems, Robotics and Vision Group, Univ. of the Balearican Islands
+///       Systems, Robotics and Vision Group, Univ. of the Balearic Islands
 ///     * Neither the name of Systems, Robotics and Vision Group, University of
-///       the Balearican Islands nor the names of its contributors may be used
+///       the Balearic Islands nor the names of its contributors may be used
 ///       to endorse or promote products derived from this software without
 ///       specific prior written permission.
 ///

@@ -13,9 +13,9 @@
 ///     * All advertising materials mentioning features or use of this software
 ///       must display the following acknowledgement:
 ///       This product includes software developed by
-///       Systems, Robotics and Vision Group, Univ. of the Balearican Islands
+///       Systems, Robotics and Vision Group, Univ. of the Balearic Islands
 ///     * Neither the name of Systems, Robotics and Vision Group, University of
-///       the Balearican Islands nor the names of its contributors may be used
+///       the Balearic Islands nor the names of its contributors may be used
 ///       to endorse or promote products derived from this software without
 ///       specific prior written permission.
 ///
@@ -34,6 +34,7 @@
 #include <driver_base/SensorLevels.h>
 
 #include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
 
 #define DEBUG_PRINTS 1
 
@@ -65,7 +66,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
   double max_allowed_time_error_double;
-  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 5e6);  // time in seconcs
+  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 5e6);  // time in seconds
 
   nhp_.param("master_out_source", master_out_source_, std::string("Exposing"));
   nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));

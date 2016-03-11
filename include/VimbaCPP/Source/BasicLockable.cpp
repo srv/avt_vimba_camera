@@ -6,9 +6,9 @@
 
 -------------------------------------------------------------------------------
 
-  File:        Helper.h
+  File:        BasicLockable.cpp
 
-  Description: Definition of helper classes (types)
+  Description: Implementation of class AVT::VmbAPI::BasicLockable.
                (This include file is for internal use only.)
 
 -------------------------------------------------------------------------------
@@ -26,30 +26,29 @@
 
 =============================================================================*/
 
-#ifndef AVT_VMBAPI_HELPER_H
-#define AVT_VMBAPI_HELPER_H
-
 #include <VimbaCPP/Include/BasicLockable.h>
+#include <VimbaCPP/Include/LoggerDefines.h>
 
 namespace AVT {
 namespace VmbAPI {
 
-template <class T>
-class LockableVector : public virtual BasicLockable
+BasicLockable::BasicLockable()
+    :   m_pMutex( MutexPtr( new Mutex() ))
 {
-  public:
-    std::vector<T> Vector;
-};
+}
 
-template <class T1, class T2>
-class LockableMap : public virtual BasicLockable
+BasicLockable::~BasicLockable()
 {
-  public:
-    std::map<T1, T2> Map;
-};
+}
 
-char const * const AVT_IP_OR_MAC_ADDRESS = "IP_OR_MAC@";
+BasicLockable::BasicLockable( MutexPtr pMutex )
+    :   m_pMutex( pMutex )
+{
+}
 
-}} // AVT::VmbAPI
+MutexPtr BasicLockable::GetMutex() const
+{
+    return m_pMutex;
+}
 
-#endif
+}} //namespace AVT::VmbAPI

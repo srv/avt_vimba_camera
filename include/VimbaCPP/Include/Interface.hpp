@@ -37,16 +37,27 @@
 // HINT: This information remains static throughout the object's lifetime
 inline VmbErrorType Interface::GetID( std::string &rStrID ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetID( NULL, nLength );
-    if ( VmbErrorSuccess == res )
+    if ( VmbErrorSuccess == res)
     {
-        if ( 0 < nLength )
+        if( 0 != nLength)
         {
-            rStrID.resize( nLength );
-            res = GetID( &rStrID[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpID( nLength + 1, '\0' );
+                res     = GetID( &tmpID[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrID  = &*tmpID.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -60,16 +71,27 @@ inline VmbErrorType Interface::GetID( std::string &rStrID ) const
 // HINT: This information remains static throughout the object's lifetime
 inline VmbErrorType Interface::GetName( std::string &rStrName ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetName( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if( 0 != nLength )
         {
-            rStrName.resize( nLength );
-            res = GetName( &rStrName[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpName( nLength + 1, '\0' );
+                res         = GetName( &tmpName[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrName    = &*tmpName.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -83,16 +105,27 @@ inline VmbErrorType Interface::GetName( std::string &rStrName ) const
 // HINT: This information remains static throughout the object's lifetime
 inline VmbErrorType Interface::GetSerialNumber( std::string &rStrSerial ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetSerialNumber( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if( 0 != nLength)
         {
-            rStrSerial.resize( nLength );
-            res = GetSerialNumber( &rStrSerial[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpSerial( nLength + 1, '\0');
+                res         = GetSerialNumber( &tmpSerial[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrSerial  = &*tmpSerial.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {

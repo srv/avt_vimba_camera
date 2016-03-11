@@ -47,6 +47,6 @@ namespace VmbAPI {
 // These are all uses of LOGGER_DECL logger declarations
 typedef LOGGER_DECL* Logger;
 
-}} // namespace AVT::Vimba
+}} // namespace AVT::VmbAPI
 
 #endif

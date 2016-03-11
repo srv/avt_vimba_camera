@@ -46,6 +46,14 @@ class BasicLockable
 
     MutexPtr GetMutex() const;
 
+    void Lock()
+    {
+        SP_ACCESS(m_pMutex)->Lock();
+    }
+    void Unlock()
+    {
+        SP_ACCESS(m_pMutex)->Unlock();
+    }
   private:
     MutexPtr m_pMutex;
 };

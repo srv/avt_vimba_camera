@@ -346,6 +346,7 @@ class Camera : public FeatureContainer, public IRegisterDevice
     // Returns:
     //  - VmbErrorSuccess:      If no error
     //  - VmbErrorBadParameter: "pFrame" is NULL.
+    //  - VmbErrorTimeout:      Call timed out
     //
     IMEXPORT VmbErrorType AcquireSingleImage( FramePtr &pFrame, VmbUint32_t timeout );
 

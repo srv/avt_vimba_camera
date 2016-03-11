@@ -40,17 +40,20 @@ inline VmbErrorType EnumEntry::GetName( std::string &rStrName ) const
     res = GetName( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrName.resize( nLength );
-            res = GetName( &rStrName[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrName.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpName( nLength + 1, '\0' );
+                res = GetName( &tmpName[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrName.resize( nPos );
+                    rStrName = &*tmpName.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else
@@ -70,17 +73,20 @@ inline VmbErrorType EnumEntry::GetDisplayName( std::string &rStrDisplayName ) co
     res = GetDisplayName( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrDisplayName.resize( nLength );
-            res = GetDisplayName( &rStrDisplayName[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrDisplayName.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpName( nLength + 1, '\0' );
+                res = GetDisplayName( &tmpName[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrDisplayName.resize( nPos );
+                    rStrDisplayName = &*tmpName.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else
@@ -100,17 +106,20 @@ inline VmbErrorType EnumEntry::GetDescription( std::string &rStrDescription ) co
     res = GetDescription( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrDescription.resize( nLength );
-            res = GetDescription( &rStrDescription[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrDescription.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpDescription( nLength + 1, '\0' );
+                res = GetDescription( &tmpDescription[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrDescription.resize( nPos );
+                    rStrDescription = &*tmpDescription.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else
@@ -130,17 +139,20 @@ inline VmbErrorType EnumEntry::GetTooltip( std::string &rStrTooltip ) const
     res = GetTooltip( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrTooltip.resize( nLength );
-            res = GetTooltip( &rStrTooltip[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrTooltip.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpTooltip( nLength + 1, '\0' );
+                res = GetTooltip( &tmpTooltip[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrTooltip.resize( nPos );
+                    rStrTooltip = &*tmpTooltip.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else
@@ -160,17 +172,20 @@ inline VmbErrorType EnumEntry::GetSFNCNamespace( std::string &rStrNamespace ) co
     res = GetSFNCNamespace( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrNamespace.resize( nLength );
-            res = GetSFNCNamespace( &rStrNamespace[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrNamespace.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpNamespace( nLength + 1, '\0' );
+                res = GetSFNCNamespace( &tmpNamespace[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrNamespace.resize( nPos );
+                    rStrNamespace =&*tmpNamespace.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else

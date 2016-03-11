@@ -48,6 +48,8 @@ class IntFeature : public BaseFeature
 
     IMEXPORT virtual VmbErrorType GetRange( VmbInt64_t &minimum, VmbInt64_t &maximum ) const;
 
+    IMEXPORT virtual VmbErrorType HasIncrement( VmbBool_t &incrementSupported) const;
+
     IMEXPORT virtual VmbErrorType GetIncrement( VmbInt64_t &increment ) const;
 };
 

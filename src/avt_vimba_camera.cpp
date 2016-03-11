@@ -101,8 +101,6 @@ AvtVimbaCamera::AvtVimbaCamera(std::string name) {
   updater_.setHardwareID("unknown");
   updater_.add(name_, this, &AvtVimbaCamera::getCurrentState);
   updater_.update();
-
-
 }
 
 void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_prints) {
@@ -794,6 +792,10 @@ void AvtVimbaCamera::updateExposureConfig(Config& config) {
   if (config.exposure_auto != config_.exposure_auto || on_init_) {
     changed = true;
     setFeatureValue("ExposureAuto", config.exposure_auto.c_str());
+  }
+  if (config.exposure_auto_alg != config_.exposure_auto_alg || on_init_) {
+    changed = true;
+    setFeatureValue("ExposureAutoAlg", config.exposure_auto_alg.c_str());
   }
   if (config.exposure_auto_tol != config_.exposure_auto_tol || on_init_) {
     changed = true;

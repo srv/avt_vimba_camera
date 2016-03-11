@@ -6,10 +6,10 @@
 
 -------------------------------------------------------------------------------
 
-  File:        Helper.h
+  File:        CommandFeature.cpp
 
-  Description: Definition of helper classes (types)
-               (This include file is for internal use only.)
+  Description: Implementation of class AVT::VmbAPI::CommandFeature.
+               (For internal use only)
 
 -------------------------------------------------------------------------------
 
@@ -26,30 +26,35 @@
 
 =============================================================================*/
 
-#ifndef AVT_VMBAPI_HELPER_H
-#define AVT_VMBAPI_HELPER_H
-
-#include <VimbaCPP/Include/BasicLockable.h>
+#include <VimbaCPP/Source/CommandFeature.h>
 
 namespace AVT {
 namespace VmbAPI {
 
-template <class T>
-class LockableVector : public virtual BasicLockable
+CommandFeature::CommandFeature( const VmbFeatureInfo_t *featureInfo, FeatureContainer *pFeatureContainer )
+    :BaseFeature( featureInfo, pFeatureContainer )
 {
-  public:
-    std::vector<T> Vector;
-};
+}
 
-template <class T1, class T2>
-class LockableMap : public virtual BasicLockable
+VmbErrorType CommandFeature::RunCommand() 
 {
-  public:
-    std::map<T1, T2> Map;
-};
+    if ( NULL == m_pFeatureContainer )
+    {
+        return VmbErrorDeviceNotOpen;
+    }
 
-char const * const AVT_IP_OR_MAC_ADDRESS = "IP_OR_MAC@";
+    return (VmbErrorType)VmbFeatureCommandRun( m_pFeatureContainer->GetHandle(), m_featureInfo.name.c_str() );
+}
 
-}} // AVT::VmbAPI
+VmbErrorType CommandFeature::IsCommandDone( bool &rbIsDone ) const
+{
+    if ( NULL == m_pFeatureContainer )
+    {
+        return VmbErrorDeviceNotOpen;
+    }
 
-#endif
+    return (VmbErrorType)VmbFeatureCommandIsDone( m_pFeatureContainer->GetHandle(), m_featureInfo.name.c_str(), &rbIsDone );
+}
+
+
+}} // namespace AVT::VmbAPI

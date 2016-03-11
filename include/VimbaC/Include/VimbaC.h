@@ -28,9 +28,9 @@
 #ifndef VIMBAC_H_INCLUDE_
 #define VIMBAC_H_INCLUDE_
 
-// This file describes all necessary definitions for using AVT's VimbaC API.
-// These type definitions are designed to be portable from other languages
-//  and other operating systems.
+// This file describes all necessary definitions for using Allied Vision's
+// VimbaC API. These type definitions are designed to be portable from other
+// languages and other operating systems.
 //
 // General conventions:
 // - Method names are composed in the following manner:
@@ -404,10 +404,10 @@ IMEXPORTC void VMB_CALL VmbShutdown ( void );
 //
 //  [out]  VmbCameraInfo_t*  pCameraInfo        Array of VmbCameraInfo_t, allocated by
 //                                              the caller. The camera list is
-//                                              copied here. May be NULL.
+//                                              copied here. May be NULL if pNumFound is used for size query.
 //  [in ]  VmbUint32_t       listLength         Number of VmbCameraInfo_t elements provided
 //  [out]  VmbUint32_t*      pNumFound          Number of VmbCameraInfo_t elements found.
-//  [in ]  VmbUint32_t       sizeofCameraInfo   Size of the structure
+//  [in ]  VmbUint32_t       sizeofCameraInfo   Size of the structure (if pCameraInfo == NULL this parameter is ignored)
 //
 // Returns:
 //
@@ -415,12 +415,14 @@ IMEXPORTC void VMB_CALL VmbShutdown ( void );
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorStructSize:    The given struct size is not valid for this API version
 //  - VmbErrorMoreData:      The given list length was insufficient to hold all available entries
+//  - VmbErrorBadParameter:  The pNumFound parameter was NULL
 //
-// Details:     Camera detection is started with the first call of VmbCamerasList() or the registration
-//              of the "DiscoveryCameraEvent" event. The first call of VmbCamerasList() might be delayed
-//              if no "DiscoveryCameraEvent" event is registered (see GigE Discovery procedure).
-//              This function is usually called twice: once with an empty array to query the length
-//              of the list, and then again with an array of the correct length.
+// Details:     Camera detection is started with the registration of the "DiscoveryCameraEvent"
+//              event or the first call of VmbCamerasList(), which may be delayed if no
+//              "DiscoveryCameraEvent" event is registered (see examples).
+//              VmbCamerasList() is usually called twice: once with an empty array to query the
+//              list length, and then again with an array of the correct length. If camera
+//              lists change between the calls, pNumFound may deviate from the query return.
 //
 IMEXPORTC VmbError_t VMB_CALL VmbCamerasList ( VmbCameraInfo_t*   pCameraInfo,
                                                VmbUint32_t        listLength,
@@ -444,6 +446,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbCamerasList ( VmbCameraInfo_t*   pCameraInfo,
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorNotFound:      The designated camera cannot be found
 //  - VmbErrorStructSize:    The given struct size is not valid for this API version
+//  - VmbErrorBadParameter:  idString was NULL
 //
 // Details:     May be called if a camera has not been opened by the application yet.
 //              Examples for "idString": 
@@ -473,6 +476,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbCameraInfoQuery ( const char*         idString,
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorNotFound:      The designated camera cannot be found
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorInvalidCall:   if called from frame callback
+//  - VmbErrorBadParameter:  if idString or pCameraHandle is NULL
 //
 // Details:     A camera may be opened in a specific access mode, which determines
 //              the level of control you have on a camera.
@@ -499,6 +504,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbCameraOpen ( const char*      idString,
 //
 //  - VmbErrorSuccess:       If no error
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 // Details:     Depending on the access mode this camera was opened with, events are killed,
 //              callbacks are unregistered, and camera control is released.
@@ -516,9 +522,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbCameraClose ( const VmbHandle_t  cameraHandle )
 // Parameters:
 //
 //  [in ]  const VmbHandle_t    handle            Handle for an entity that exposes features
-//  [out]  VmbFeatureInfo_t*    pFeatureInfoList  An array of VmbFeatureInfo_t to be filled by the API. May be NULL.
+//  [out]  VmbFeatureInfo_t*    pFeatureInfoList  An array of VmbFeatureInfo_t to be filled by the API. May be NULL if pNumFund is used for size query.
 //  [in ]  VmbUint32_t          listLength        Number of VmbFeatureInfo_t elements provided
-//  [out]  VmbUint32_t*         pNumFound         Number of VmbFeatureInfo_t elements found. May be NULL.
+//  [out]  VmbUint32_t*         pNumFound         Number of VmbFeatureInfo_t elements found. May be NULL if pFeatureInfoList is not NULL.
 //  [in ]  VmbUint32_t          sizeofFeatureInfo Size of a VmbFeatureInfo_t entry
 //
 // Returns:
@@ -527,7 +533,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbCameraClose ( const VmbHandle_t  cameraHandle )
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
-//  - VmbErrorStructSize:    The given struct size is not valid for this version of the API
+//  - VmbErrorStructSize:    The given struct size of VmbFeatureInfo_t is not valid for this version of the API
 //  - VmbErrorMoreData:      The given list length was insufficient to hold all available entries
 //
 // Details:     This method lists all implemented features, whether they are currently available or not.
@@ -579,9 +585,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureInfoQuery ( const VmbHandle_t   handle,
 //
 //  [in ]  const VmbHandle_t    handle              Handle for an entity that exposes features
 //  [in ]  const char*          name                Name of the feature
-//  [out]  VmbFeatureInfo_t*    pFeatureInfoList    An array of VmbFeatureInfo_t to be filled by the API. May be NULL.
+//  [out]  VmbFeatureInfo_t*    pFeatureInfoList    An array of VmbFeatureInfo_t to be filled by the API. May be NULL if pNumFound is used for size query.
 //  [in ]  VmbUint32_t          listLength          Number of VmbFeatureInfo_t elements provided
-//  [out]  VmbUint32_t*         pNumFound           Number of VmbFeatureInfo_t elements found. May be NULL.
+//  [out]  VmbUint32_t*         pNumFound           Number of VmbFeatureInfo_t elements found. May be NULL is pFeatureInfoList is not NULL.
 //  [in ]  VmbUint32_t          sizeofFeatureInfo   Size of a VmbFeatureInfo_t entry
 //
 // Returns:
@@ -590,7 +596,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureInfoQuery ( const VmbHandle_t   handle,
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
-//  - VmbErrorStructSize:    The given struct size is not valid for this version of the API
+//  - VmbErrorStructSize:    The given struct size of VmbFeatureInfo_t is not valid for this version of the API
 //  - VmbErrorMoreData:      The given list length was insufficient to hold all available entries
 //
 // Details:     This method lists all affected features, whether they are currently available or not.
@@ -616,9 +622,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureListAffected ( const VmbHandle_t   handl
 //
 //  [in ]  const VmbHandle_t    handle              Handle for an entity that exposes features
 //  [in ]  const char*          name                Name of the feature
-//  [out]  VmbFeatureInfo_t*    pFeatureInfoList    An array of VmbFeatureInfo_t to be filled by the API. May be NULL.
+//  [out]  VmbFeatureInfo_t*    pFeatureInfoList    An array of VmbFeatureInfo_t to be filled by the API. May be NULL if pNumFound is used for size query.
 //  [in ]  VmbUint32_t          listLength          Number of VmbFeatureInfo_t elements provided
-//  [out]  VmbUint32_t*         pNumFound           Number of VmbFeatureInfo_t elements found. May be NULL.
+//  [out]  VmbUint32_t*         pNumFound           Number of VmbFeatureInfo_t elements found. May be NULL if pFeatureInfoList is not NULL.
 //  [in ]  VmbUint32_t          sizeofFeatureInfo   Size of a VmbFeatureInfo_t entry
 //
 // Returns:
@@ -631,9 +637,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureListAffected ( const VmbHandle_t   handl
 //  - VmbErrorMoreData:      The given list length was insufficient to hold all available entries
 //
 // Details:     This method lists all selected features, whether they are currently available or not.
-//              Features having selected features ("selectors") have no direct impact on the camera,
-//              but only have an influence on the register address that selected features point to.
-//              The list of features does not change as long as the camera/interface is connected.
+//              Features with selected features ("selectors") have no direct impact on the camera,
+//              but only influence the register address that selected features point to.
+//              The list of features does not change while the camera/interface is connected.
 //              This function is usually called twice: once with an empty array to query the length
 //              of the list, and then again with an array of the correct length.
 //
@@ -663,6 +669,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureListSelected ( const VmbHandle_t  handle
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorBadParameter:  pIsReadable and pIsWriteable were both NULL
+//  - VmbErrorNotFound:      The feature was not found
 //
 // Details:     The access mode of a feature may change. For example, if "PacketSize"
 //              is locked while image data is streamed, it is only readable.
@@ -693,6 +700,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureAccessQuery ( const VmbHandle_t   handle
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Integer
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  If name or pValue is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntGet ( const VmbHandle_t   handle,
                                                  const char*         name,
@@ -717,6 +726,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntGet ( const VmbHandle_t   handle,
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Integer
 //  - VmbErrorInvalidValue:  "value" is either out of bounds or not an increment of the minimum
+//  - VmbErrorBadParameter:  If name is NULL
+//  - VmbErrorNotFound:      If the feature was not found
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntSet ( const VmbHandle_t   handle,
                                                  const char*         name,
@@ -740,7 +752,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntSet ( const VmbHandle_t   handle,
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorBadParameter:  If name is NULL or pMin and pMax are NULL
 //  - VmbErrorWrongType:     The type of feature "name" is not Integer
+//  - VmbErrorNotFound:      If the feature was not found
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntRangeQuery ( const VmbHandle_t   handle,
                                                         const char*         name,
@@ -765,6 +779,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntRangeQuery ( const VmbHandle_t   hand
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Integer
+//  - VmbErrorNotFound:      The feature was not found
+//    VmbErrorBadParameter:  IF name or pValue is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntIncrementQuery ( const VmbHandle_t   handle,
                                                             const char*         name,
@@ -790,6 +806,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureIntIncrementQuery ( const VmbHandle_t   
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Float
+//  - VmbErrorBadParameter:  If name or pValue is NULL
+//  - VmbErrorNotFound:      The feature was not found
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatGet ( const VmbHandle_t   handle,
                                                    const char*         name,
@@ -814,6 +832,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatGet ( const VmbHandle_t   handle,
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Float
 //  - VmbErrorInvalidValue:  "value" is not within valid bounds
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  If name is NULL
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatSet ( const VmbHandle_t   handle,
                                                    const char*         name,
@@ -838,6 +859,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatSet ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Float
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbBadParameter:       If name is NULL or pMin and pMax are NULL
 //
 // Details:     Only one of the values may be queried if the other parameter is set to NULL,
 //              but if both parameters are NULL, an error is returned.
@@ -847,6 +870,31 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatRangeQuery ( const VmbHandle_t   ha
                                                           double*             pMin,
                                                           double*             pMax );
 
+//
+// Method:      VmbFeatureFloatIncrementQuery()
+//
+// Purpose:     Query the increment of an float feature.
+//
+// Parameters:
+//
+//  [in ]  const VmbHandle_t    handle         Handle for an entity that exposes features
+//  [in ]  const char*          name           Name of the feature
+//  [out]  double*              pValue         Value of the increment to get.
+//
+// Returns:
+//
+//  - VmbErrorSuccess:       If no error
+//  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
+//  - VmbErrorBadHandle:     The given handle is not valid
+//  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorWrongType:     The type of feature "name" is not Integer
+//  - VmbErrorNotFound:      The feature was not found
+//    VmbErrorBadParameter:  IF name or pValue is NULL
+//
+IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatIncrementQuery ( const VmbHandle_t   handle,
+                                                              const char*         name,
+                                                              VmbBool_t*          hasIncrement,
+                                                              double*             pValue );
 //-----Enum --------
 
 //
@@ -868,6 +916,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureFloatRangeQuery ( const VmbHandle_t   ha
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  if name or pValue is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumGet ( const VmbHandle_t   handle,
                                                   const char*         name,
@@ -893,6 +943,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumGet ( const VmbHandle_t   handle,
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
 //  - VmbErrorInvalidValue:  "value" is not within valid bounds
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  If name ore value is NULL
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumSet ( const VmbHandle_t   handle,
                                                   const char*         name,
@@ -907,9 +960,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumSet ( const VmbHandle_t   handle,
 //
 //  [in ]  const VmbHandle_t    handle          Handle for an entity that exposes features
 //  [in ]  const char*          name            Name of the feature
-//  [out]  const char* const*   pNameArray      An Array of enumeration value names
+//  [out]  const char* const*   pNameArray      An Array of enumeration value names may be NULL if pNumFilled is used for size query
 //  [in ]  VmbUint32_t          arrayLength     Number of elements in the array
-//  [out]  VmbUint32_t *        pNumFilled      Number of filled elements
+//  [out]  VmbUint32_t *        pNumFilled      Number of filled elements my be NULL if pNameArray is not NULL
 //
 // Returns:
 //
@@ -919,6 +972,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumSet ( const VmbHandle_t   handle,
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorMoreData:      The given array length was insufficient to hold all available entries
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  if name is NULL or pNameArray and pNumFilled are NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumRangeQuery ( const VmbHandle_t   handle,
                                                          const char*         name,
@@ -945,6 +1000,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumRangeQuery ( const VmbHandle_t   han
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  if name or value or pIsAvailable is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumIsAvailable ( const VmbHandle_t   handle,
                                                           const char*         name,
@@ -970,6 +1027,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumIsAvailable ( const VmbHandle_t   ha
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  if name or value pIntVal is NULL
 //
 // Details:     Converts a name of an enum member into an int value ("Mono12Packed" to 0x10C0006)
 //
@@ -997,6 +1056,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumAsInt ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  If name or pStringValue is NULL
 //
 // Details:     Converts an int value to a name of an enum member (e.g. 0x10C0006 to "Mono12Packed")
 //
@@ -1024,7 +1085,10 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumAsString ( const VmbHandle_t   handl
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorStructSize     Size of VmbFeatureEnumEntry_t is not compatible with the API version
 //  - VmbErrorWrongType:     The type of feature "name" is not Enumeration
+//  - VmbErrorNotFound:      The feature was not found
+//  - VmbErrorBadParameter:  if featureName or entryName or pFeatureEnumEntry is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumEntryGet ( const VmbHandle_t       handle,
                                                        const char*             featureName,
@@ -1043,9 +1107,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumEntryGet ( const VmbHandle_t       h
 //
 //  [in ]  const VmbHandle_t    handle          Handle for an entity that exposes features
 //  [in ]  const char*          name            Name of the string feature
-//  [out]  char*                buffer          String buffer to fill. May be NULL.
+//  [out]  char*                buffer          String buffer to fill. May be NULL if pSizeFilled is used for size query.
 //  [in ]  VmbUint32_t          bufferSize      Size of the input buffer
-//  [out]  VmbUint32_t*         pSizeFilled     Size actually filled
+//  [out]  VmbUint32_t*         pSizeFilled     Size actually filled my be NULL if buffer is not NULL.
 //
 // Returns:
 //
@@ -1054,6 +1118,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureEnumEntryGet ( const VmbHandle_t       h
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorMoreData:      The given buffer size was too small
+//  - VmbErrorNotFound:      The feature was not found
 //  - VmbErrorWrongType:     The type of feature "name" is not String
 //
 // Details:     This function is usually called twice: once with an empty buffer to query the length
@@ -1082,8 +1147,11 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureStringGet ( const VmbHandle_t   handle,
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
+//  - VmbErrorNotFound:      The feature was not found
 //  - VmbErrorWrongType:     The type of feature "name" is not String
 //  - VmbErrorInvalidValue:  Length of "value" exceeded the maximum length
+//  - VmbErrorBadParameter:  if name or value is NULL
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureStringSet ( const VmbHandle_t   handle,
                                                     const char*         name,
@@ -1107,6 +1175,7 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureStringSet ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not String
+//  - VmbErrorBadParameter:  If name or pMaxLength is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureStringMaxlengthQuery ( const VmbHandle_t   handle,
                                                                const char*         name,
@@ -1132,6 +1201,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureStringMaxlengthQuery ( const VmbHandle_t
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Boolean
+//  - VmbErrorNotFound:      If feature is not found
+//  - VmbErrorBadParameter:  If name or pValue is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureBoolGet ( const VmbHandle_t   handle,
                                                   const char*         name,
@@ -1156,6 +1227,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureBoolGet ( const VmbHandle_t   handle,
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Boolean
 //  - VmbErrorInvalidValue:  "value" is not within valid bounds
+//  - VmbErrorNotFound:      If the feature is not found
+//  - VmbErrorBadParameter:  name is NULL
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureBoolSet ( const VmbHandle_t   handle,
                                                   const char*         name,
@@ -1180,6 +1254,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureBoolSet ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Command
+//  - VmbErrorNotFound:      Feature was not found
+//  - VmbErrorBadParameter:  name is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureCommandRun ( const VmbHandle_t   handle,
                                                      const char*         name );
@@ -1202,6 +1278,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureCommandRun ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Command
+//  - VmbErrorNotFound:      Feature was not found
+//  - VmbErrorBadParameter:  name or pIsDone is NULL
 //
 IMEXPORTC VmbError_t VMB_CALL VmbFeatureCommandIsDone ( const VmbHandle_t   handle,
                                                         const char*         name,
@@ -1228,8 +1306,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureCommandIsDone ( const VmbHandle_t   hand
 //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
-//  - VmbErrorMoreData:      The given array length was insufficient to hold all available entries
 //  - VmbErrorWrongType:     The type of feature "name" is not Register
+//  - VmbErrorNotFound:      Feature was not found
+//  - VmbErrorBadParameter:  If name or pBuffer or pSizeFilled is NULL
 //
 // Details:     This feature type corresponds to a top-level "Register" feature in GenICam.
 //              Data transfer is split up by the transport layer if the feature length is too large.
@@ -1260,6 +1339,9 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureRawGet ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Register
+//  - VmbErrorNotFound:      Feature was not found
+//  - VmbErrorBadParameter:  If name or pBuffer is NULL
+//  - VmbErrorInvalidCall:   If called from frame callback
 //
 // Details:     This feature type corresponds to a first-level "Register" node in the XML file.
 //              Data transfer is split up by the transport layer if the feature length is too large.
@@ -1288,6 +1370,8 @@ IMEXPORTC VmbError_t VMB_CALL VmbFeatureRawSet ( const VmbHandle_t   handle,
 //  - VmbErrorBadHandle:     The given handle is not valid
 //  - VmbErrorInvalidAccess: Operation is invalid with the current access mode
 //  - VmbErrorWrongType:     The type of feature "name" is not Register
+//  - VmbErrorNotFound:      Feature not found
+//  - VmbErrorBadParameter:  If name or pLength is NULL
 //
 // Details:     This feature type corresponds to a first-level "Register" node in the XML file.
 //

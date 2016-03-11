@@ -6,9 +6,9 @@
 
 -------------------------------------------------------------------------------
 
-  File:        Helper.h
+  File:        Mutex.cpp
 
-  Description: Definition of helper classes (types)
+  Description: Implementation of class AVT::VmbAPI::Mutex.
                (This include file is for internal use only.)
 
 -------------------------------------------------------------------------------
@@ -26,30 +26,72 @@
 
 =============================================================================*/
 
-#ifndef AVT_VMBAPI_HELPER_H
-#define AVT_VMBAPI_HELPER_H
+#include <math.h>
 
-#include <VimbaCPP/Include/BasicLockable.h>
+#include <VimbaCPP/Include/Mutex.h>
+#include <VimbaCPP/Include/LoggerDefines.h>
 
 namespace AVT {
 namespace VmbAPI {
 
-template <class T>
-class LockableVector : public virtual BasicLockable
-{
-  public:
-    std::vector<T> Vector;
-};
-
-template <class T1, class T2>
-class LockableMap : public virtual BasicLockable
-{
-  public:
-    std::map<T1, T2> Map;
-};
-
-char const * const AVT_IP_OR_MAC_ADDRESS = "IP_OR_MAC@";
-
-}} // AVT::VmbAPI
-
+Mutex::Mutex( bool bInitLock )
+#ifdef WIN32
+    :   m_hMutex( NULL )
 #endif
+{
+#ifdef WIN32
+    m_hMutex = CreateMutex( NULL, FALSE, NULL );
+    if( NULL == m_hMutex )
+    {
+        LOG_FREE_TEXT( "Could not create mutex." );
+        throw std::bad_alloc();
+    }
+#else
+    pthread_mutex_init(&m_Mutex, NULL);
+#endif
+
+    if( true == bInitLock )
+    {
+        Lock();
+    }
+}
+
+Mutex::~Mutex()
+{  
+#ifdef WIN32
+    CloseHandle( m_hMutex );
+#else
+    pthread_mutex_destroy(&m_Mutex);
+#endif
+}
+
+Mutex::Mutex( const Mutex& )
+{
+    // No copy ctor
+}
+
+Mutex& Mutex::operator=( const Mutex& )
+{
+    // No assignment operator
+    return *this;
+}
+
+void Mutex::Lock()
+{
+#ifdef WIN32
+    WaitForSingleObject( m_hMutex, INFINITE );
+#else
+    pthread_mutex_lock( &m_Mutex );
+#endif
+}
+
+void Mutex::Unlock()
+{  
+#ifdef WIN32
+    ReleaseMutex( m_hMutex );
+#else
+    pthread_mutex_unlock( &m_Mutex );
+#endif
+}
+
+}} //namespace AVT::VmbAPI

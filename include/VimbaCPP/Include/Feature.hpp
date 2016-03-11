@@ -27,35 +27,39 @@
 
 #ifndef AVT_VMBAPI_FEATURE_HPP
 #define AVT_VMBAPI_FEATURE_HPP
-
 //
 // Inline wrapper functions that allocate memory for STL objects in the application's context
 // and to pass data across DLL boundaries using arrays
 //
 inline VmbErrorType Feature::GetValues( StringVector &rValues )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
-    std::vector<const char*> data;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetValues( (const char **)NULL, nSize );
-    if (    VmbErrorSuccess == res
-        &&  0 < nSize )
-    {
-        data.resize( nSize );
-
-        res = GetValues( &data[0], nSize );
-    }
-
     if ( VmbErrorSuccess == res )
     {
-        rValues.clear();
-
-        for (   std::vector<const char*>::iterator iter = data.begin();
-                data.end() != iter;
-                ++iter )
+        if ( 0 != nSize)
         {
-            rValues.push_back( std::string( *iter ));
+            try
+            {
+                std::vector<const char*> data( nSize );
+                res = GetValues( &data[0], nSize );
+                if ( VmbErrorSuccess == res )
+                {
+                    StringVector tmpValues( data.size() );
+                    std::copy( data.begin(), data.end(), tmpValues.begin() );
+                    rValues.swap( tmpValues);
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rValues.clear();
         }
     }
 
@@ -64,16 +68,32 @@ inline VmbErrorType Feature::GetValues( StringVector &rValues )
 
 inline VmbErrorType Feature::GetEntries( EnumEntryVector &rEntries )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetEntries( (EnumEntry*)NULL, nSize );
-    if (    VmbErrorSuccess == res
-         && 0 < nSize )
+    if ( VmbErrorSuccess == res )
     {
-        rEntries.resize( nSize );
-
-        res = GetEntries( &rEntries[0], nSize );
+        if( 0 != nSize )
+        {
+            try
+            {
+                EnumEntryVector tmpEntries( nSize );
+                res = GetEntries( &tmpEntries[0], nSize );
+                if( VmbErrorSuccess == res)
+                {
+                    rEntries.swap( tmpEntries );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rEntries.clear();
+        }
     }
 
     return res;
@@ -85,12 +105,28 @@ inline VmbErrorType Feature::GetValues( Int64Vector &rValues )
     VmbUint32_t nSize;
 
     res = GetValues( (VmbInt64_t*)NULL, nSize );
-    if (    VmbErrorSuccess == res
-         && 0 < nSize )
+    if ( VmbErrorSuccess == res )
     {
-        rValues.resize( nSize );
-
-        res = GetValues( &rValues[0], nSize );
+        if( 0 != nSize)
+        {
+            try
+            {
+                Int64Vector tmpValues( nSize );
+                res = GetValues( &tmpValues[0], nSize );
+                if( VmbErrorSuccess == res)
+                {
+                    rValues.swap( tmpValues );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rValues.clear();
+        }
     }
 
     return res;
@@ -98,23 +134,26 @@ inline VmbErrorType Feature::GetValues( Int64Vector &rValues )
 
 inline VmbErrorType Feature::GetValue( std::string &rStrValue ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetValue( (char * const)NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrValue.resize( nLength );
-            res = GetValue( &rStrValue[0], nLength );
-            if ( VmbErrorSuccess == res )
+            try
             {
-                size_t nPos = rStrValue.find( '\0' );
-                if ( nLength-1 > nPos )
+                std::vector<std::string::value_type> tmpValue( nLength + 1, '\0' );
+                res = GetValue( &tmpValue[0], nLength );
+                if ( VmbErrorSuccess == res )
                 {
-                    rStrValue.resize( nPos );
+                    rStrValue = &*tmpValue.begin();
                 }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
             }
         }
         else
@@ -133,14 +172,32 @@ inline VmbErrorType Feature::GetValue( UcharVector &rValue ) const
 }
 inline VmbErrorType Feature::GetValue( UcharVector &rValue, VmbUint32_t &rnSizeFilled ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetValue( NULL, nSize, rnSizeFilled );
     if ( VmbErrorSuccess == res )
     {
-        rValue.resize( nSize );
-        res = GetValue( &rValue[0], nSize, rnSizeFilled );
+        if( 0 != nSize)
+        {
+            try
+            {
+                UcharVector tmpValue( nSize );
+                res = GetValue( &tmpValue[0], nSize, rnSizeFilled );
+                if( VmbErrorSuccess == res )
+                {
+                    rValue.swap( tmpValue);
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rValue.clear();
+        }
     }
 
     return res;
@@ -157,16 +214,27 @@ inline VmbErrorType Feature::SetValue( const UcharVector &rValue )
 
 inline VmbErrorType Feature::GetName( std::string &rStrName ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetName( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrName.resize( nLength );
-            res = GetName( &rStrName[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpName( nLength + 1, '\0' );
+                res = GetName( &tmpName[0], nLength );
+                if( VmbErrorSuccess == res)
+                {
+                    rStrName = &*tmpName.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -179,16 +247,27 @@ inline VmbErrorType Feature::GetName( std::string &rStrName ) const
 
 inline VmbErrorType Feature::GetDisplayName( std::string &rStrDisplayName ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetDisplayName( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrDisplayName.resize( nLength );
-            res = GetDisplayName( &rStrDisplayName[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpDisplayName( nLength + 1, '\0' );
+                res = GetDisplayName( &tmpDisplayName[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrDisplayName = &*tmpDisplayName.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -201,16 +280,27 @@ inline VmbErrorType Feature::GetDisplayName( std::string &rStrDisplayName ) cons
 
 inline VmbErrorType Feature::GetCategory( std::string &rStrCategory ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetCategory( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrCategory.resize( nLength );
-            res = GetCategory( &rStrCategory[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpCategory( nLength + 1, '\0' );
+                res = GetCategory( &tmpCategory[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrCategory = &*tmpCategory.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -223,16 +313,27 @@ inline VmbErrorType Feature::GetCategory( std::string &rStrCategory ) const
 
 inline VmbErrorType Feature::GetUnit( std::string &rStrUnit ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetUnit( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrUnit.resize( nLength );
-            res = GetUnit( &rStrUnit[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpUnit( nLength + 1, '\0' );
+                res = GetUnit( &tmpUnit[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrUnit = &*tmpUnit.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -245,16 +346,27 @@ inline VmbErrorType Feature::GetUnit( std::string &rStrUnit ) const
 
 inline VmbErrorType Feature::GetRepresentation( std::string &rStrRepresentation ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetRepresentation( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrRepresentation.resize( nLength );
-            res = GetRepresentation( &rStrRepresentation[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpRepresentation( nLength + 1, '\0' );
+                res = GetRepresentation( &tmpRepresentation[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrRepresentation = &*tmpRepresentation.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -267,16 +379,27 @@ inline VmbErrorType Feature::GetRepresentation( std::string &rStrRepresentation 
 
 inline VmbErrorType Feature::GetToolTip( std::string &rStrToolTip ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetToolTip( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrToolTip.resize( nLength );
-            res = GetToolTip( &rStrToolTip[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpToolTip( nLength + 1, '\0');
+                res = GetToolTip( &tmpToolTip[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrToolTip = &*tmpToolTip.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -289,16 +412,27 @@ inline VmbErrorType Feature::GetToolTip( std::string &rStrToolTip ) const
 
 inline VmbErrorType Feature::GetDescription( std::string &rStrDescription ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetDescription( NULL, nLength );
     if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrDescription.resize( nLength );
-            res = GetDescription( &rStrDescription[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpDescription( nLength + 1, '\0');
+                res = GetDescription( &tmpDescription[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrDescription = &*tmpDescription.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -311,16 +445,27 @@ inline VmbErrorType Feature::GetDescription( std::string &rStrDescription ) cons
 
 inline VmbErrorType Feature::GetSFNCNamespace( std::string &rStrSFNCNamespace ) const
 {
-    VmbErrorType res;
-    VmbUint32_t nLength;
+    VmbErrorType    res;
+    VmbUint32_t     nLength;
 
     res = GetSFNCNamespace( NULL, nLength );
-    if ( VmbErrorSuccess == res )        
+    if ( VmbErrorSuccess == res )
     {
-        if ( 0 < nLength )
+        if ( 0 != nLength )
         {
-            rStrSFNCNamespace.resize( nLength );
-            res = GetSFNCNamespace( &rStrSFNCNamespace[0], nLength );
+            try
+            {
+                std::vector<std::string::value_type> tmpSFNCNamespace( nLength + 1, '\0' );
+                res = GetSFNCNamespace( &tmpSFNCNamespace[0], nLength );
+                if( VmbErrorSuccess == res )
+                {
+                    rStrSFNCNamespace = &*tmpSFNCNamespace.begin();
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
         }
         else
         {
@@ -333,31 +478,65 @@ inline VmbErrorType Feature::GetSFNCNamespace( std::string &rStrSFNCNamespace ) 
 
 inline VmbErrorType Feature::GetAffectedFeatures( FeaturePtrVector &rAffectedFeatures )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetAffectedFeatures( NULL, nSize );
-    if (    VmbErrorSuccess == res
-        && 0 < nSize )
+    if ( VmbErrorSuccess == res )
     {
-        rAffectedFeatures.resize( nSize );
-        res = GetAffectedFeatures( &rAffectedFeatures[0], nSize );
+        if( 0 != nSize)
+        {
+            try
+            {
+                FeaturePtrVector tmpAffectedFeatures( nSize );
+                res = GetAffectedFeatures( &tmpAffectedFeatures[0], nSize );
+                if( VmbErrorSuccess == res )
+                {
+                    rAffectedFeatures.swap( tmpAffectedFeatures );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rAffectedFeatures.clear();
+        }
     }
 
     return res;
 }
 
-inline VmbErrorType Feature::GetSelectedFeatures( FeaturePtrVector &rselectedFeatures )
+inline VmbErrorType Feature::GetSelectedFeatures( FeaturePtrVector &rSelectedFeatures )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetSelectedFeatures( NULL, nSize );
-    if (    VmbErrorSuccess == res
-         && 0 < nSize )
+    if ( VmbErrorSuccess == res )
     {
-        rselectedFeatures.resize( nSize );
-        res = GetSelectedFeatures( &rselectedFeatures[0], nSize );
+        if( 0 != nSize )
+        {
+            try
+            {
+                FeaturePtrVector tmpSelectedFeatures( nSize );
+                res = GetSelectedFeatures( &tmpSelectedFeatures[0], nSize );
+                if( VmbErrorSuccess == res )
+                {
+                    rSelectedFeatures.swap ( tmpSelectedFeatures );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rSelectedFeatures.clear();
+        }
     }
 
     return res;
