@@ -766,7 +766,6 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
   }
   if (config.trigger_delay != config_.trigger_delay || on_init_) {
     changed = true;
-    std::cout << "Trigger source is: " << config.trigger_source << std::endl;
     setFeatureValue("TriggerDelayAbs", config.trigger_delay);
   }
   if(changed && show_debug_prints_){

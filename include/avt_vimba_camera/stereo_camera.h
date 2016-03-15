@@ -35,6 +35,7 @@
 
 #include <avt_vimba_camera/avt_vimba_camera.h>
 #include <avt_vimba_camera/AvtVimbaCameraConfig.h>
+#include <avt_vimba_camera/AvtVimbaCameraStereoConfig.h>
 #include <avt_vimba_camera/avt_vimba_api.h>
 
 #include <ros/ros.h>
@@ -74,16 +75,19 @@ class StereoCamera {
   long long unsigned int left_timestamp_;
   long long unsigned int right_timestamp_;
 
-  // Params
+  // Parameters
   std::string left_ip_;
   std::string right_ip_;
   std::string left_guid_;
   std::string right_guid_;
   std::string left_camera_info_url_;
   std::string right_camera_info_url_;
-  std::string master_out_source_;
-  std::string slave_trigger_source_;
-  std::string slave_in_source_;
+
+  // Sync parameters
+  std::string left_sync_out_source_;
+  std::string left_trigger_source_;
+  std::string right_trigger_source_;
+  std::string right_sync_in_selector_;
 
   ros::Time left_time_;
   ros::Time right_time_;
@@ -97,7 +101,6 @@ class StereoCamera {
 
   // Image transport
   image_transport::ImageTransport it_;
-  //image_transport::ImageTransport right_it_;
 
   // ROS Camera publisher
   image_transport::CameraPublisher left_pub_;
@@ -106,23 +109,23 @@ class StereoCamera {
   sensor_msgs::Image left_img_;
   sensor_msgs::Image right_img_;
 
-  // sensor_msgs::CameraInfo left_info_;
-  // sensor_msgs::CameraInfo right_info_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> left_info_man_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> right_info_man_;
 
   // Dynamic reconfigure
   typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
-  typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
+  typedef avt_vimba_camera::AvtVimbaCameraStereoConfig StereoConfig;
+  typedef dynamic_reconfigure::Server<StereoConfig> ReconfigureServer;
   ReconfigureServer reconfigure_server_;
 
   // Camera configuration
-  Config camera_config_;
+  StereoConfig camera_config_;
 
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);
-  void configure(Config& newconfig, uint32_t level);
-  void updateCameraInfo(const Config& config);
+  void configure(StereoConfig& newconfig, uint32_t level);
+  void updateCameraInfo(const StereoConfig& config);
+  void copyConfig(StereoConfig& sc, Config& lc, Config& rc);
   void sync(void);
   void syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };

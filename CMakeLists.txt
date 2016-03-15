@@ -23,6 +23,7 @@ target_architecture(ARCH)
 #add dynamic reconfigure api
 generate_dynamic_reconfigure_options(
   cfg/AvtVimbaCamera.cfg
+  cfg/AvtVimbaCameraStereo.cfg
 )
 
 catkin_package(

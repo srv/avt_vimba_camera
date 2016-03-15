@@ -66,12 +66,13 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
   double max_allowed_time_error_double;
-  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 5e6);  // time in seconds
-
-  nhp_.param("master_out_source", master_out_source_, std::string("Exposing"));
-  nhp_.param("slave_trigger_source", slave_trigger_source_, std::string("Line1"));
-  nhp_.param("slave_in_source", slave_in_source_, std::string("SyncIn1"));
+  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 10e6);  // time in nanoseconds
   nhp_.param("show_debug_prints", show_debug_prints_, false);
+
+  // nhp_.param("left_sync_out_source", left_sync_out_source_, std::string("Exposing"));
+  // nhp_.param("left_trigger_source", left_trigger_source_, std::string("FixedRate"));
+  // nhp_.param("right_trigger_source", right_trigger_source_, std::string("Line1"));
+  // nhp_.param("right_sync_in_selector", right_sync_in_selector_, std::string("SyncIn1"));
 
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
@@ -140,10 +141,12 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
 }
 
 void StereoCamera::sync(void) {
-  if (left_ready_ && right_ready_) {
+  bool left_has_subscribers = left_pub_.getNumSubscribers() > 0;
+  bool right_has_subscribers = right_pub_.getNumSubscribers() > 0;
+  if (left_ready_ && right_ready_ && left_has_subscribers && right_has_subscribers) {
     if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
       synced_frames_++;
-      ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error.");
+      ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error. Dropped frames: " << left_frames_ + right_frames_ - 2 * synced_frames_ );
       ros::Time ros_time = left_time_;
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
@@ -159,7 +162,25 @@ void StereoCamera::sync(void) {
       // pub_freq_->tick(ros_time);
       right_ready_ = false;
       left_ready_ = false;
+    } else {
+      ROS_WARN_STREAM("Frames not properly sync'ed. Error time is " << abs(left_time_.toNSec() - right_time_.toNSec()) << " nsec");
     }
+  } else if (left_ready_ && left_has_subscribers && !right_has_subscribers) {
+    ROS_INFO_STREAM("Publishing left only");
+    sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+    lci.header.stamp = left_time_;
+    left_img_.header.stamp = left_time_;
+    left_img_.header.frame_id = lci.header.frame_id;
+    left_pub_.publish(left_img_, lci);
+    left_ready_ = false;
+  } else if (right_ready_ && !left_has_subscribers && right_has_subscribers) {
+    ROS_INFO_STREAM("Publishing right only");
+    sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+    rci.header.stamp = right_time_;
+    right_img_.header.stamp = right_time_;
+    right_img_.header.frame_id = rci.header.frame_id;
+    right_pub_.publish(right_img_, rci);
+    right_ready_ = false;
   }
 }
 
@@ -172,20 +193,9 @@ void StereoCamera::sync(void) {
 *  @param level bit-wise OR of reconfiguration levels for all
 *               changed parameters (0xffffffff on initial call)
 **/
-void StereoCamera::configure(Config& newconfig, uint32_t level) {
-  Config left_config = newconfig;
-  Config right_config = newconfig;
-
+void StereoCamera::configure(StereoConfig& newconfig, uint32_t level) {
   // Left camera is considered MASTER and right SLAVE
-  left_config.sync_out_source = master_out_source_;
-  right_config.trigger_source = slave_trigger_source_;
-  right_config.sync_in_selector = slave_in_source_;
-
   try {
-    // resolve frame ID using tf_prefix parameter
-    left_config.frame_id  = "left_optical";
-    right_config.frame_id = "right_optical";
-
     // The camera already stops & starts acquisition
     // so there's no problem on changing any feature.
     if (!left_cam_.isOpened()) {
@@ -198,6 +208,8 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
         right_cam_.resetTimestamp();
       }
     }
+    Config left_config, right_config;
+    copyConfig(newconfig, left_config, right_config);
     left_cam_.updateConfig(left_config);
     right_cam_.updateConfig(right_config);
     updateCameraInfo(newconfig);
@@ -206,14 +218,115 @@ void StereoCamera::configure(Config& newconfig, uint32_t level) {
   }
 }
 
-void StereoCamera::updateCameraInfo(const Config& config) {
+void StereoCamera::copyConfig(StereoConfig& sc, Config& lc, Config& rc) {
+  // left camera
+  lc.frame_id = sc.left_frame_id;
+  lc.trig_timestamp_topic = sc.left_trig_timestamp_topic;
+  lc.acquisition_mode = sc.left_acquisition_mode;
+  lc.acquisition_rate = sc.left_acquisition_rate;
+  lc.trigger_source = sc.left_trigger_source;
+  lc.trigger_mode = sc.left_trigger_mode;
+  lc.trigger_selector = sc.left_trigger_selector;
+  lc.trigger_activation = sc.left_trigger_activation;
+  lc.trigger_delay = sc.left_trigger_delay;
+  lc.exposure = sc.exposure;
+  lc.exposure_auto = sc.exposure_auto;
+  lc.exposure_auto_alg = sc.exposure_auto_alg;
+  lc.exposure_auto_tol = sc.exposure_auto_tol;
+  lc.exposure_auto_max = sc.exposure_auto_max;
+  lc.exposure_auto_min = sc.exposure_auto_min;
+  lc.exposure_auto_outliers = sc.exposure_auto_outliers;
+  lc.exposure_auto_rate = sc.exposure_auto_rate;
+  lc.exposure_auto_target = sc.exposure_auto_target;
+  lc.gain = sc.gain;
+  lc.gain_auto = sc.gain_auto;
+  lc.gain_auto_tol = sc.gain_auto_tol;
+  lc.gain_auto_max = sc.gain_auto_max;
+  lc.gain_auto_min = sc.gain_auto_min;
+  lc.gain_auto_outliers = sc.gain_auto_outliers;
+  lc.gain_auto_rate = sc.gain_auto_rate;
+  lc.gain_auto_target = sc.gain_auto_target;
+  lc.balance_ratio_abs = sc.balance_ratio_abs;
+  lc.balance_ratio_selector = sc.balance_ratio_selector;
+  lc.whitebalance_auto = sc.whitebalance_auto;
+  lc.whitebalance_auto_tol = sc.whitebalance_auto_tol;
+  lc.whitebalance_auto_rate = sc.whitebalance_auto_rate;
+  lc.binning_x = sc.binning_x;
+  lc.binning_y = sc.binning_y;
+  lc.decimation_x = sc.decimation_x;
+  lc.decimation_y = sc.decimation_y;
+  lc.width = sc.width;
+  lc.height = sc.height;
+  lc.roi_width = sc.roi_width;
+  lc.roi_height = sc.roi_height;
+  lc.roi_offset_x = sc.roi_offset_x;
+  lc.roi_offset_y = sc.roi_offset_y;
+  lc.pixel_format = sc.pixel_format;
+  lc.stream_bytes_per_second = sc.stream_bytes_per_second;
+  lc.ptp_mode = sc.left_ptp_mode;
+  lc.sync_in_selector = sc.left_sync_in_selector;
+  lc.sync_out_polarity = sc.left_sync_out_polarity;
+  lc.sync_out_selector = sc.left_sync_out_selector;
+  lc.sync_out_source = sc.left_sync_out_source;
+  // right camera
+  rc.frame_id = sc.right_frame_id;
+  rc.trig_timestamp_topic = sc.right_trig_timestamp_topic;
+  rc.acquisition_mode = sc.right_acquisition_mode;
+  rc.acquisition_rate = sc.right_acquisition_rate;
+  rc.trigger_source = sc.right_trigger_source;
+  rc.trigger_mode = sc.right_trigger_mode;
+  rc.trigger_selector = sc.right_trigger_selector;
+  rc.trigger_activation = sc.right_trigger_activation;
+  rc.trigger_delay = sc.right_trigger_delay;
+  rc.exposure = sc.exposure;
+  rc.exposure_auto = sc.exposure_auto;
+  rc.exposure_auto_alg = sc.exposure_auto_alg;
+  rc.exposure_auto_tol = sc.exposure_auto_tol;
+  rc.exposure_auto_max = sc.exposure_auto_max;
+  rc.exposure_auto_min = sc.exposure_auto_min;
+  rc.exposure_auto_outliers = sc.exposure_auto_outliers;
+  rc.exposure_auto_rate = sc.exposure_auto_rate;
+  rc.exposure_auto_target = sc.exposure_auto_target;
+  rc.gain = sc.gain;
+  rc.gain_auto = sc.gain_auto;
+  rc.gain_auto_tol = sc.gain_auto_tol;
+  rc.gain_auto_max = sc.gain_auto_max;
+  rc.gain_auto_min = sc.gain_auto_min;
+  rc.gain_auto_outliers = sc.gain_auto_outliers;
+  rc.gain_auto_rate = sc.gain_auto_rate;
+  rc.gain_auto_target = sc.gain_auto_target;
+  rc.balance_ratio_abs = sc.balance_ratio_abs;
+  rc.balance_ratio_selector = sc.balance_ratio_selector;
+  rc.whitebalance_auto = sc.whitebalance_auto;
+  rc.whitebalance_auto_tol = sc.whitebalance_auto_tol;
+  rc.whitebalance_auto_rate = sc.whitebalance_auto_rate;
+  rc.binning_x = sc.binning_x;
+  rc.binning_y = sc.binning_y;
+  rc.decimation_x = sc.decimation_x;
+  rc.decimation_y = sc.decimation_y;
+  rc.width = sc.width;
+  rc.height = sc.height;
+  rc.roi_width = sc.roi_width;
+  rc.roi_height = sc.roi_height;
+  rc.roi_offset_x = sc.roi_offset_x;
+  rc.roi_offset_y = sc.roi_offset_y;
+  rc.pixel_format = sc.pixel_format;
+  rc.stream_bytes_per_second = sc.stream_bytes_per_second;
+  rc.ptp_mode = sc.right_ptp_mode;
+  rc.sync_in_selector = sc.right_sync_in_selector;
+  rc.sync_out_polarity = sc.right_sync_out_polarity;
+  rc.sync_out_selector = sc.right_sync_out_selector;
+  rc.sync_out_source = sc.right_sync_out_source;
+}
+
+void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   // Get camera_info from the manager
   sensor_msgs::CameraInfo left_ci = left_info_man_->getCameraInfo();
   sensor_msgs::CameraInfo right_ci = right_info_man_->getCameraInfo();
 
   // Set the frame id
-  left_ci.header.frame_id = config.frame_id;
-  right_ci.header.frame_id = config.frame_id;
+  left_ci.header.frame_id = config.left_frame_id;
+  right_ci.header.frame_id = config.right_frame_id;
 
   // Set the operational parameters in CameraInfo (binning, ROI)
   left_ci.height    = config.height;
@@ -238,12 +351,12 @@ void StereoCamera::updateCameraInfo(const Config& config) {
   right_ci.roi.width    = config.roi_width;
 
   std::string left_camera_info_url, right_camera_info_url;
-  nhp_.getParam("left_camera_info_url", left_camera_info_url);
-  nhp_.getParam("right_camera_info_url", right_camera_info_url);
+  nhp_.getParamCached("left_camera_info_url", left_camera_info_url);
+  nhp_.getParamCached("right_camera_info_url", right_camera_info_url);
 
   // set the new URL and load CameraInfo (if any) from it
   if (left_camera_info_url != left_camera_info_url_) {
-    left_info_man_->setCameraName(config.frame_id);
+    left_info_man_->setCameraName(config.left_frame_id);
     if (left_info_man_->validateURL(left_camera_info_url)) {
       left_info_man_->loadCameraInfo(left_camera_info_url);
       left_ci = left_info_man_->getCameraInfo();
@@ -253,7 +366,7 @@ void StereoCamera::updateCameraInfo(const Config& config) {
   }
 
   if (right_camera_info_url != right_camera_info_url_) {
-    right_info_man_->setCameraName(config.frame_id);
+    right_info_man_->setCameraName(config.right_frame_id);
     if (right_info_man_->validateURL(right_camera_info_url)) {
       right_info_man_->loadCameraInfo(right_camera_info_url);
       right_ci = right_info_man_->getCameraInfo();
@@ -267,16 +380,14 @@ void StereoCamera::updateCameraInfo(const Config& config) {
   bool lResolutionMatchesCalibration = (left_ci.width == config.width
                                    && left_ci.height == config.height);
   // check
-  left_ci.roi.do_rectify = lRoiMatchesCalibration ||
-    lResolutionMatchesCalibration;
+  left_ci.roi.do_rectify = lRoiMatchesCalibration || lResolutionMatchesCalibration;
 
   bool rRoiMatchesCalibration = (right_ci.height == config.roi_height
                               && right_ci.width == config.roi_width);
   bool rResolutionMatchesCalibration = (right_ci.width == config.width
                                    && right_ci.height == config.height);
   // check
-  right_ci.roi.do_rectify = rRoiMatchesCalibration ||
-    rResolutionMatchesCalibration;
+  right_ci.roi.do_rectify = rRoiMatchesCalibration || rResolutionMatchesCalibration;
 
   // push the changes to manager
   left_info_man_->setCameraInfo(left_ci);
@@ -288,7 +399,7 @@ void StereoCamera::syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &s
   stat.add("Number of left frames", left_frames_);
   stat.add("Number of right frames", right_frames_);
   stat.add("Number of sync'd frames", synced_frames_);
-  stat.add("Dropped % sync'd frames", 2 * (double)synced_frames_ / ((double)left_frames_ + (double)right_frames_));
+  stat.add("Dropped % sync'd frames", 200 * (double)synced_frames_ / ((double)left_frames_ + (double)right_frames_));
 
   if (synced_frames_ <= left_frames_)
     stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Sync'd images.");

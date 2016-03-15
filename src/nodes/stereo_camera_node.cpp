@@ -9,7 +9,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nhp("~");
 
   avt_vimba_camera::StereoCamera sc(nh,nhp);
-  ros::MultiThreadedSpinner spinner(4);
+  ros::MultiThreadedSpinner spinner(0);
   spinner.spin();
   return 0;
 }
