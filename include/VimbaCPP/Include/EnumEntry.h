@@ -37,6 +37,7 @@
 
 #include <VimbaC/Include/VimbaC.h>
 #include <VimbaCPP/Include/VimbaCPPCommon.h>
+#include <VimbaCPP/Include/SharedPointerDefines.h>
 
 namespace AVT {
 namespace VmbAPI {
@@ -73,6 +74,19 @@ class EnumEntry
     // Purpose:     Creates an instance of class EnumEntry
     //
     IMEXPORT EnumEntry();
+    //
+    // Method:      EnumEntry copy constructor
+    //
+    // Purpose:     Creates a copy of class EnumEntry
+    //
+    IMEXPORT EnumEntry( const EnumEntry &other);
+    
+    //
+    // Method:      EnumEntry assignment operator
+    //
+    // Purpose:     assigns EnumEntry to existing instance
+    //
+    IMEXPORT EnumEntry& operator=( const EnumEntry&o);
 
     //
     // Method:      EnumEntry destructor
@@ -159,14 +173,8 @@ class EnumEntry
     VmbErrorType GetSFNCNamespace( std::string &sFNCNamespace ) const;
 
   private:
-    std::string                 m_strName;
-    std::string                 m_strDisplayName;
-    std::string                 m_strDescription;
-    std::string                 m_strTooltip;
-    std::string                 m_strNamespace;
-    VmbFeatureVisibilityType    m_Visibility;
-    VmbInt64_t                  m_nValue;
-
+    struct PrivateImpl;
+    PrivateImpl           *m_pImpl;
     // Array functions to pass data across DLL boundaries
     IMEXPORT VmbErrorType GetName( char * const pName, VmbUint32_t &size ) const;
     IMEXPORT VmbErrorType GetDisplayName( char * const pDisplayName, VmbUint32_t &size ) const;

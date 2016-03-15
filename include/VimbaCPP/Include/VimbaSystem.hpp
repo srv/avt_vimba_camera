@@ -35,15 +35,32 @@
 //
 inline VmbErrorType VimbaSystem::GetInterfaces( InterfacePtrVector &rInterfaces )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetInterfaces( NULL, nSize );
-    if (    VmbErrorSuccess == res
-        && 0 < nSize )
+    if ( VmbErrorSuccess == res )
     {
-        rInterfaces.resize( nSize );
-        res = GetInterfaces( &rInterfaces[0], nSize );
+        if( 0 != nSize)
+        {
+            try
+            {
+                InterfacePtrVector tmpInterfaces( nSize );
+                res = GetInterfaces( &tmpInterfaces[0], nSize );
+                if( VmbErrorSuccess == res )
+                {
+                    rInterfaces.swap( tmpInterfaces);
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rInterfaces.clear();
+        }
     }
 
     return res;
@@ -51,15 +68,32 @@ inline VmbErrorType VimbaSystem::GetInterfaces( InterfacePtrVector &rInterfaces 
 
 inline VmbErrorType VimbaSystem::GetCameras( CameraPtrVector &rCameras )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetCameras( NULL, nSize );
-    if (    VmbErrorSuccess == res
-        && 0 < nSize )
+    if (    VmbErrorSuccess == res)
     {
-        rCameras.resize( nSize );
-        res = GetCameras( &rCameras[0], nSize );
+        if( 0 != nSize)
+        {
+            try
+            {
+                CameraPtrVector tmpCameras( nSize );
+                res = GetCameras( &tmpCameras[0], nSize );
+                if( VmbErrorSuccess == res )
+                {
+                    rCameras.swap( tmpCameras );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            rCameras.clear();
+        }
     }
 
     return res;

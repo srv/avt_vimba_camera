@@ -59,8 +59,10 @@ class BaseFeature : public virtual BasicLockable
     IMEXPORT virtual    VmbErrorType GetRange( VmbInt64_t &minimum, VmbInt64_t &maximum ) const;
     IMEXPORT virtual    VmbErrorType GetRange( double &minimum, double &maximum ) const;
 
+    IMEXPORT virtual    VmbErrorType HasIncrement( VmbBool_t &incrementSupported) const;
     IMEXPORT virtual    VmbErrorType GetIncrement( VmbInt64_t &increment ) const;
-    
+    IMEXPORT virtual    VmbErrorType GetIncrement( double &increment ) const;
+
     IMEXPORT virtual    VmbErrorType IsValueAvailable( const char *pValue, bool &available ) const;
     IMEXPORT virtual    VmbErrorType IsValueAvailable( const VmbInt64_t value, bool &available ) const;
 

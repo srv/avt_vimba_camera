@@ -38,15 +38,32 @@
 // HINT: Once queried this information remains static throughout the object's lifetime
 inline VmbErrorType FeatureContainer::GetFeatures( FeaturePtrVector &features )
 {
-    VmbErrorType res;
-    VmbUint32_t nSize;
+    VmbErrorType    res;
+    VmbUint32_t     nSize;
 
     res = GetFeatures( NULL, nSize );
-    if (    VmbErrorSuccess == res
-        && 0 < nSize )
+    if (    VmbErrorSuccess == res )
     {
-        features.resize( nSize );
-        res = GetFeatures( &features[0], nSize );
+        if( 0 != nSize)
+        {
+            try
+            {
+                FeaturePtrVector tmpFeatures( nSize );
+                res = GetFeatures( &tmpFeatures[0], nSize );
+                if( VmbErrorSuccess == res)
+                {
+                    features.swap( tmpFeatures );
+                }
+            }
+            catch(...)
+            {
+                return VmbErrorResources;
+            }
+        }
+        else
+        {
+            features.clear();
+        }
     }
 
     return res;

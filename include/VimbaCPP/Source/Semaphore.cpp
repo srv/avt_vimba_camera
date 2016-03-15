@@ -6,10 +6,10 @@
 
 -------------------------------------------------------------------------------
 
-  File:        Helper.h
+  File:        Semaphore.cpp
 
-  Description: Definition of helper classes (types)
-               (This include file is for internal use only.)
+  Description: Implementation of an semaphore class.
+               (For internal use only)
 
 -------------------------------------------------------------------------------
 
@@ -26,30 +26,68 @@
 
 =============================================================================*/
 
-#ifndef AVT_VMBAPI_HELPER_H
-#define AVT_VMBAPI_HELPER_H
+#include <math.h>
 
-#include <VimbaCPP/Include/BasicLockable.h>
+#include <VimbaCPP/Source/Semaphore.h>
+#include <VimbaCPP/Include/LoggerDefines.h>
 
 namespace AVT {
 namespace VmbAPI {
 
-template <class T>
-class LockableVector : public virtual BasicLockable
-{
-  public:
-    std::vector<T> Vector;
-};
-
-template <class T1, class T2>
-class LockableMap : public virtual BasicLockable
-{
-  public:
-    std::map<T1, T2> Map;
-};
-
-char const * const AVT_IP_OR_MAC_ADDRESS = "IP_OR_MAC@";
-
-}} // AVT::VmbAPI
-
+Semaphore::Semaphore( int nInit, int nMax )
+#ifdef WIN32
+    :   m_hSemaphore( NULL )
 #endif
+{
+#ifdef WIN32
+    m_hSemaphore = CreateSemaphore( NULL, nInit, nMax, NULL );
+    if( NULL == m_hSemaphore )
+    {
+        LOG_FREE_TEXT( "Could not create semaphore." );
+        throw std::bad_alloc();
+    }
+#else
+    sem_init( &m_Semaphore, false, (unsigned int)nInit );
+#endif
+}
+
+Semaphore::Semaphore( const Semaphore& )
+{
+    // No compiler generated copy ctor
+}
+
+Semaphore& Semaphore::operator=( const Semaphore& )
+{
+    // No assignment operator
+    return *this;
+}
+
+Semaphore::~Semaphore()
+{  
+#ifdef WIN32
+    CloseHandle( m_hSemaphore );
+#else
+    sem_destroy( &m_Semaphore );
+#endif
+}
+
+void Semaphore::Acquire()
+{
+#ifdef WIN32
+    WaitForSingleObject( m_hSemaphore, INFINITE );
+#else
+    sem_wait( &m_Semaphore );
+#endif
+}
+
+void Semaphore::Release()
+{
+#ifdef WIN32
+    ReleaseSemaphore( m_hSemaphore, 1, NULL );
+#else
+    sem_post( &m_Semaphore );
+#endif
+}
+
+} //namespace VmbAPI
+} //namespace AVT

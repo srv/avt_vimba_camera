@@ -85,6 +85,8 @@ class Feature
     //
     // [out]    std::string&    value       The feature's value
     //
+    // Details:     When an empty string is returned, its size
+    //              indicates the maximum length
     VmbErrorType GetValue( std::string &value ) const;
 
     //
@@ -256,6 +258,17 @@ class Feature
     //
     VmbErrorType SetValue( const UcharVector &value );
 
+    // Method:      HasIncrement()
+    //
+    // Purpose:     Gets the support state increment of a feature
+    //
+    // Parameters:
+    //
+    // [out]    VmbBool_t&    incrementsupported       The feature's increment support state
+    //
+    IMEXPORT    VmbErrorType HasIncrement( VmbBool_t &incrementSupported ) const;
+
+
     //
     // Method:      GetIncrement()
     //
@@ -266,6 +279,16 @@ class Feature
     // [out]    VmbInt64_t&    increment       The feature's increment
     //
     IMEXPORT    VmbErrorType GetIncrement( VmbInt64_t &increment ) const;
+
+    // Method:      GetIncrement()
+    //
+    // Purpose:     Gets the increment of a feature of type double
+    //
+    // Parameters:
+    //
+    // [out]    double&    increment       The feature's increment
+    //
+    IMEXPORT    VmbErrorType GetIncrement( double &increment ) const;
 
     //
     // Method:      IsValueAvailable()

@@ -204,7 +204,7 @@ namespace VmbAPI {
 
         return *this;
     }
-        
+
     template <class T>
     void shared_ptr<T>::reset()
     {
@@ -264,6 +264,18 @@ namespace VmbAPI {
     shared_ptr<T> dynamic_pointer_cast(const shared_ptr<T2> &rSharedPointer)
     {
         return shared_ptr<T>(rSharedPointer, dynamic_cast_tag());
+    }
+
+    template <class T1, class T2>
+    bool operator==(const shared_ptr<T1>& sp1, const shared_ptr<T2>& sp2)
+    {
+        return sp1.get() == sp2.get();
+    }
+
+    template <class T1, class T2>
+    bool operator!=(const shared_ptr<T1>& sp1, const shared_ptr<T2>& sp2)
+    {
+        return sp1.get() != sp2.get();
     }
 
 }} //namespace AVT::VmbAPI

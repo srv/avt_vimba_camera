@@ -47,6 +47,10 @@ class FloatFeature : public BaseFeature
     IMEXPORT virtual VmbErrorType SetValue( const double &rfValue );
 
     IMEXPORT virtual VmbErrorType GetRange( double &minimum, double &maximum ) const;
+    
+    IMEXPORT virtual VmbErrorType HasIncrement( VmbBool_t &incrementSupported) const;
+
+    IMEXPORT virtual VmbErrorType GetIncrement( double &increment ) const;
 };
 
 }} // namespace AVT::VmbAPI

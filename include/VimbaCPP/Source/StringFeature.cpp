@@ -6,10 +6,10 @@
 
 -------------------------------------------------------------------------------
 
-  File:        Helper.h
+  File:        StringFeature.cpp
 
-  Description: Definition of helper classes (types)
-               (This include file is for internal use only.)
+  Description: Implementation of class AVT::VmbAPI::StringFeature.
+               (For internal use only)
 
 -------------------------------------------------------------------------------
 
@@ -26,30 +26,42 @@
 
 =============================================================================*/
 
-#ifndef AVT_VMBAPI_HELPER_H
-#define AVT_VMBAPI_HELPER_H
-
-#include <VimbaCPP/Include/BasicLockable.h>
+#include <VimbaCPP/Source/StringFeature.h>
 
 namespace AVT {
 namespace VmbAPI {
 
-template <class T>
-class LockableVector : public virtual BasicLockable
+StringFeature::StringFeature( const VmbFeatureInfo_t *featureInfo, FeatureContainer* const pFeatureContainer )
+    :   BaseFeature( featureInfo, pFeatureContainer )
 {
-  public:
-    std::vector<T> Vector;
-};
+}
 
-template <class T1, class T2>
-class LockableMap : public virtual BasicLockable
+VmbErrorType StringFeature::GetValue( char * const pStrValue, VmbUint32_t &rnLength ) const
 {
-  public:
-    std::map<T1, T2> Map;
-};
+    if ( NULL == m_pFeatureContainer )
+    {
+        return VmbErrorDeviceNotOpen;
+    }
 
-char const * const AVT_IP_OR_MAC_ADDRESS = "IP_OR_MAC@";
+    if ( NULL == pStrValue )
+    {
+        return (VmbErrorType)VmbFeatureStringMaxlengthQuery( m_pFeatureContainer->GetHandle(), m_featureInfo.name.c_str(), &rnLength );
+    }
+    else
+    {
+        return (VmbErrorType)VmbFeatureStringGet( m_pFeatureContainer->GetHandle(), m_featureInfo.name.c_str(), pStrValue, rnLength, &rnLength );
+    }
+}
 
-}} // AVT::VmbAPI
+VmbErrorType StringFeature::SetValue( const char *pStrValue ) 
+{
+    if ( NULL == m_pFeatureContainer )
+    {
+        return VmbErrorDeviceNotOpen;
+    }
 
-#endif
+    return (VmbErrorType)VmbFeatureStringSet( m_pFeatureContainer->GetHandle(), m_featureInfo.name.c_str(), pStrValue );
+}
+
+
+}} // namespace AVT::VmbAPI

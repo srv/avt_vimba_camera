@@ -56,6 +56,7 @@ class VimbaSystem
     // Parameters:  none
     //
     // Returns:
+    //
     //  - VimbaSystem&
     //
     IMEXPORT static VimbaSystem& GetInstance();
@@ -66,10 +67,12 @@ class VimbaSystem
     // Purpose:   Retrieve the version number of VmbAPI.
     //
     // Parameters:
+    //
     //  [out]  VmbVersionInfo_t&   version      Reference to the struct where version information
     //                                          is copied
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:       always returned
     //
     // Details:    This function can be called at any time, even before the API is
@@ -85,6 +88,7 @@ class VimbaSystem
     // Parameters:  none
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:       If no error
     //  - VmbErrorInternalFault: An internal fault occurred
     //
@@ -101,6 +105,7 @@ class VimbaSystem
     // Parameters: none
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:       always returned
     //
     // Details:   This will free some resources and deallocate all physical resources if applicable.
@@ -113,9 +118,11 @@ class VimbaSystem
     // Purpose:   List all the interfaces currently visible to VmbAPI.
     //
     // Parameters:
+    //
     //  [out]  InterfacePtrVector& interfaces            Vector of shared pointer to Interface object
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:       If no error
     //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
     //  - VmbErrorStructSize:    The given struct size is not valid for this API version
@@ -134,10 +141,12 @@ class VimbaSystem
     // Purpose:   Gets a specific interface identified by an ID.
     //
     // Parameters:
+    //
     //  [in ]  const char*          pID                 The ID of the interface to get (returned by GetInterfaces())
     //  [out]  InterfacePtr&        pInterface          Shared pointer to Interface object
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:          If no error
     //  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
     //  - VmbErrorBadParameter:     "pID" is NULL.
@@ -178,9 +187,11 @@ class VimbaSystem
     // Purpose:   Retrieve a list of all cameras.
     //
     // Parameters:
+    //
     //  [out]  CameraPtrVector& cameras            Vector of shared pointer to Camera object
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:       If no error
     //  - VmbErrorApiNotStarted: VmbStartup() was not called before the current command
     //  - VmbErrorStructSize:    The given struct size is not valid for this API version
@@ -196,10 +207,12 @@ class VimbaSystem
     // Purpose:   Gets a specific camera identified by an ID. The returned camera is still closed.
     //
     // Parameters:
+    //
     //  [in ]  const char*          pID                 The ID of the camera to get
     //  [out]  CameraPtr&           pCamera             Shared pointer to camera object
     //
     // Returns:
+    //
     //  - VmbErrorSuccess:          If no error
     //  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
     //  - VmbErrorBadParameter:     "pID" is NULL.
@@ -211,8 +224,7 @@ class VimbaSystem
     //              "pID" might be one of the following: 
     //              "169.254.12.13" for an IP address,
     //              "000F314C4BE5" for a MAC address or 
-    //              "1234567890" for a plain serial number.
-    //
+    //              "DEV_1234567890" for an ID as reported by Vimba
     //
     IMEXPORT VmbErrorType GetCameraByID( const char *pID, CameraPtr &pCamera );
     
@@ -239,7 +251,7 @@ class VimbaSystem
     //              "pID" might be one of the following: 
     //              "169.254.12.13" for an IP address,
     //              "000F314C4BE5" for a MAC address or 
-    //              "1234567890" for a plain serial number.
+    //              "DEV_1234567890" for an ID as reported by Vimba
     //
     IMEXPORT VmbErrorType OpenCameraByID( const char *pID, VmbAccessModeType eAccessMode, CameraPtr &pCamera );
 

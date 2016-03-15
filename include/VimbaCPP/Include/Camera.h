@@ -1,5 +1,5 @@
 /*=============================================================================
-  Copyright (C) 2012 Allied Vision Technologies.  All Rights Reserved.
+  Copyright (C) 2012 - 2016 Allied Vision Technologies.  All Rights Reserved.
 
   Redistribution of this file, in original or modified form, without
   prior written consent of Allied Vision Technologies is prohibited.
@@ -346,6 +346,7 @@ class Camera : public FeatureContainer, public IRegisterDevice
     // Returns:
     //  - VmbErrorSuccess:      If no error
     //  - VmbErrorBadParameter: "pFrame" is NULL.
+    //  - VmbErrorTimeout:      Call timed out
     //
     IMEXPORT VmbErrorType AcquireSingleImage( FramePtr &pFrame, VmbUint32_t timeout );
 
@@ -367,13 +368,13 @@ class Camera : public FeatureContainer, public IRegisterDevice
     VmbErrorType AcquireMultipleImages( FramePtrVector &frames, VmbUint32_t timeout );
 
     //
-    // Method:      AcquireMultipleImages( FramePtrVector&, VmbUint32_t ), but returns the number of frames that were filled completely.
+    // Method:      AcquireMultipleImages()
     //
-    // Purpose:     Same as AcquireMultipleImages()
+    // Purpose:     Same as AcquireMultipleImages(FramePtrVector&, VmbUint32_t), but returns the number of frames that were filled completely.
     //
-    // Parameters:  [out]   FramePtrVector& frames             The frames that get filled
-    //              [in ]   VmbUint32_t     timeout            The time to wait until one frame got filled
-    //              [out]   VmbUint32_t&    numFramesCompleted The number of frames that were filled completely
+    // Parameters:  [out]   FramePtrVector& frames              The frames that get filled
+    //              [in ]   VmbUint32_t     timeout             The time to wait until one frame got filled
+    //              [out]   VmbUint32_t&    numFramesCompleted  The number of frames that were filled completely
     //
     // Details:     The size of the frame vector determines the number of frames to use.
     //              On return, "numFramesCompleted" holds the number of frames actually filled.
@@ -539,6 +540,59 @@ class Camera : public FeatureContainer, public IRegisterDevice
     //
     IMEXPORT VmbErrorType EndCapture();
 
+    //
+    // Method:      SaveCameraSettings()
+    //
+    // Purpose:     Saves the current camera setup to an XML file
+    //
+    // Parameters:
+    //
+    //  [in ]   std::string                     pStrFileName    xml file name
+    //  [in ]   VmbFeaturePersistSettings_t*    pSettings       pointer to settings struct
+    //
+    // Returns:
+    //
+    //  - VmbErrorSuccess:          If no error
+    //  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
+    //  - VmbErrorBadHandle:        The given handle is not valid
+    //  - VmbErrorInternalFault:    When something unexpected happens in VimbaC function
+    //  - VmbErrorOther:            Every other failure in load/save settings implementation class
+    //
+    VmbErrorType SaveCameraSettings( std::string fileName, VmbFeaturePersistSettings_t *pSettings = 0 ) const;
+
+    //
+    // Method:      LoadCameraSettings()
+    //
+    // Purpose:     Loads the current camera setup from an XML file into the camera
+    //
+    // Parameters:
+    //
+    //  [in] std::string                    pStrFileName    xml file name
+    //  [in] VmbFeaturePersistSettings_t*   pSettings       pointer to settings struct
+    //
+    // Returns:
+    //
+    //  - VmbErrorSuccess:          If no error
+    //  - VmbErrorApiNotStarted:    VmbStartup() was not called before the current command
+    //  - VmbErrorBadHandle:        The given handle is not valid
+    //  - VmbErrorInternalFault:    When something unexpected happens in VimbaC function
+    //  - VmbErrorOther:            Every other failure in load/save settings implementation class
+    //
+    VmbErrorType LoadCameraSettings( std::string fileName, VmbFeaturePersistSettings_t *pSettings = 0 ) const;
+
+    //
+    // Method:      LoadSaveSettingsSetup()
+    //
+    // Purpose:     Sets Load/Save settings behaviour (alternative to settings struct)
+    //
+    // Parameters:
+    //
+    //  [in] VmbFeaturePersist_t  persistType    determines which feature shall be considered during load/save settings
+    //  [in] VmbUint32_t          maxIterations  determines how many 'tries' during loading feature values shall be performed
+    //  [in] VmbUint32_t          loggingLevel   determines level of detail for load/save settings logging
+    //
+    IMEXPORT void LoadSaveSettingsSetup( VmbFeaturePersist_t persistType, VmbUint32_t maxIterations, VmbUint32_t loggingLevel );
+
   private:
     // Default ctor
     Camera();
@@ -563,6 +617,12 @@ class Camera : public FeatureContainer, public IRegisterDevice
     IMEXPORT virtual VmbErrorType WriteRegisters( const VmbUint64_t *pAddressArray, VmbUint32_t addressSize, const VmbUint64_t *pDataArray, VmbUint32_t *pCompletedWrites );
     IMEXPORT virtual VmbErrorType ReadMemory( VmbUint64_t address, VmbUchar_t *pBuffer, VmbUint32_t bufferSize, VmbUint32_t *pSizeComplete ) const;
     IMEXPORT virtual VmbErrorType WriteMemory( VmbUint64_t address, const VmbUchar_t *pBuffer, VmbUint32_t bufferSize, VmbUint32_t *pSizeComplete );
+    IMEXPORT VmbErrorType SaveCameraSettings( const char * const pStrFileName, VmbFeaturePersistSettings_t *pSettings ) const;
+    IMEXPORT VmbErrorType LoadCameraSettings( const char * const pStrFileName, VmbFeaturePersistSettings_t *pSettings ) const;
+
+    VmbFeaturePersist_t m_persistType;
+    VmbUint32_t m_maxIterations;
+    VmbUint32_t m_loggingLevel;
 };
 
 #include <VimbaCPP/Include/Camera.hpp>

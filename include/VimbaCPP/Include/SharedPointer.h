@@ -130,6 +130,11 @@ namespace VmbAPI {
     template<class T, class T2>
     shared_ptr<T> dynamic_pointer_cast(const shared_ptr<T2> &rSharedPointer);
 
+    template<class T1, class T2>
+    bool operator==(const shared_ptr<T1>& sp1, const shared_ptr<T2>& sp2);
+    template<class T1, class T2>
+    bool operator!=(const shared_ptr<T1>& sp1, const shared_ptr<T2>& sp2);
+
 }} //namespace AVT::VmbAPI
 
 #include <VimbaCPP/Include/SharedPointer_impl.h>
