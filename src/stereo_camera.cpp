@@ -69,11 +69,6 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 10e6);  // time in nanoseconds
   nhp_.param("show_debug_prints", show_debug_prints_, false);
 
-  // nhp_.param("left_sync_out_source", left_sync_out_source_, std::string("Exposing"));
-  // nhp_.param("left_trigger_source", left_trigger_source_, std::string("FixedRate"));
-  // nhp_.param("right_trigger_source", right_trigger_source_, std::string("Line1"));
-  // nhp_.param("right_sync_in_selector", right_sync_in_selector_, std::string("SyncIn1"));
-
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
   updater_.broadcast(0, "Device is closed.");
