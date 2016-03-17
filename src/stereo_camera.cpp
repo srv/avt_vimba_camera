@@ -141,7 +141,7 @@ void StereoCamera::sync(void) {
   if (left_ready_ && right_ready_ && left_has_subscribers && right_has_subscribers) {
     if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
       synced_frames_++;
-      ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error. Dropped frames: " << left_frames_ + right_frames_ - 2 * synced_frames_ );
+      //ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error. Dropped frames: " << left_frames_ + right_frames_ - 2 * synced_frames_ );
       ros::Time ros_time = left_time_;
       sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
       sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
@@ -161,7 +161,7 @@ void StereoCamera::sync(void) {
       ROS_WARN_STREAM("Frames not properly sync'ed. Error time is " << abs(left_time_.toNSec() - right_time_.toNSec()) << " nsec");
     }
   } else if (left_ready_ && left_has_subscribers && !right_has_subscribers) {
-    ROS_INFO_STREAM("Publishing left only");
+    //ROS_INFO_STREAM("Publishing left only");
     sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
     lci.header.stamp = left_time_;
     left_img_.header.stamp = left_time_;
@@ -169,7 +169,7 @@ void StereoCamera::sync(void) {
     left_pub_.publish(left_img_, lci);
     left_ready_ = false;
   } else if (right_ready_ && !left_has_subscribers && right_has_subscribers) {
-    ROS_INFO_STREAM("Publishing right only");
+    //ROS_INFO_STREAM("Publishing right only");
     sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
     rci.header.stamp = right_time_;
     right_img_.header.stamp = right_time_;
