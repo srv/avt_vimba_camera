@@ -1,0 +1,20 @@
+<launch>
+
+	<include file="$(find turbot_configurations)/launch/modules/stereo_pipeline.launch">
+    <arg name="stereo" value="stereo_down" />
+  </include>
+
+	<node name="stereo_down" pkg="avt_vimba_camera" type="stereo_camera_node" output="screen">
+
+		<!-- Static params -->
+		<param name="left_guid" value="50-0503343289"/>
+		<param name="right_guid" value="50-0503343290"/>
+		<param name="left_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343289.yaml"/>
+		<param name="right_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343290.yaml"/>
+
+		<param name="show_debug_prints" value="false"/>
+		<rosparam command="load" file="$(find avt_vimba_camera)/params.yaml"/>
+	</node>
+
+</launch>
+
