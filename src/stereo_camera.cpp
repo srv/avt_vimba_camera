@@ -324,26 +324,36 @@ void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   right_ci.header.frame_id = config.right_frame_id;
 
   // Set the operational parameters in CameraInfo (binning, ROI)
-  left_ci.height    = config.height;
-  left_ci.width     = config.width;
-  left_ci.binning_x = config.binning_x;
-  left_ci.binning_y = config.binning_y;
+  int binning_or_decimation_x = std::max(config.binning_x, config.decimation_x);
+  int binning_or_decimation_y = std::max(config.binning_y, config.decimation_y);
 
-  right_ci.height    = config.height;
-  right_ci.width     = config.width;
-  right_ci.binning_x = config.binning_x;
-  right_ci.binning_y = config.binning_y;
+  left_ci.height    = config.height/binning_or_decimation_x;
+  left_ci.width     = config.width/binning_or_decimation_y;
+  left_ci.binning_x = 1;
+  left_ci.binning_y = 1;
+
+  right_ci.height    = config.height/binning_or_decimation_x;
+  right_ci.width     = config.width/binning_or_decimation_y;
+  right_ci.binning_x = 1;
+  right_ci.binning_y = 1;
 
   // ROI in CameraInfo is in unbinned coordinates, need to scale up
-  left_ci.roi.x_offset = config.roi_offset_x;
-  left_ci.roi.y_offset = config.roi_offset_y;
-  left_ci.roi.height   = config.roi_height;
-  left_ci.roi.width    = config.roi_width;
+  left_ci.roi.x_offset = config.roi_offset_x/binning_or_decimation_x;
+  left_ci.roi.y_offset = config.roi_offset_y/binning_or_decimation_y;
+  left_ci.roi.height   = config.roi_height/binning_or_decimation_x;
+  left_ci.roi.width    = config.roi_width/binning_or_decimation_y;
 
-  right_ci.roi.x_offset = config.roi_offset_x;
-  right_ci.roi.y_offset = config.roi_offset_y;
-  right_ci.roi.height   = config.roi_height;
-  right_ci.roi.width    = config.roi_width;
+  right_ci.roi.x_offset = config.roi_offset_x/binning_or_decimation_x;
+  right_ci.roi.y_offset = config.roi_offset_y/binning_or_decimation_y;
+  right_ci.roi.height   = config.roi_height/binning_or_decimation_x;
+  right_ci.roi.width    = config.roi_width/binning_or_decimation_y;
+
+  std::cout << "stereoconfig.width        is " << left_ci.width       << std::endl;
+  std::cout << "stereoconfig.height       is " << left_ci.height       << std::endl;
+  std::cout << "stereoconfig.roi_offset_x is " << left_ci.roi.x_offset << std::endl;
+  std::cout << "stereoconfig.roi_offset_y is " << left_ci.roi.y_offset << std::endl;
+  std::cout << "stereoconfig.roi_width    is " << left_ci.roi.height   << std::endl;
+  std::cout << "stereoconfig.roi_height   is " << left_ci.roi.width    << std::endl;
 
   std::string left_camera_info_url, right_camera_info_url;
   nhp_.getParamCached("left_camera_info_url", left_camera_info_url);

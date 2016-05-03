@@ -974,8 +974,23 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   // Make sure ROI fits in image
 
   int max_width, max_height;
-  getFeatureValue("WidthMax",max_width);
-  getFeatureValue("HeightMax",max_height);
+  getFeatureValue("WidthMax", max_width);
+  getFeatureValue("HeightMax", max_height);
+
+  std::cout << "WidthMax            is " << max_width        << std::endl;
+  std::cout << "HeightMax           is " << max_height        << std::endl;
+  std::cout << "config.width        is " << config.width        << std::endl;
+  std::cout << "config.height       is " << config.height       << std::endl;
+  std::cout << "config.roi_offset_x is " << config.roi_offset_x << std::endl;
+  std::cout << "config.roi_offset_y is " << config.roi_offset_y << std::endl;
+  std::cout << "config.roi_width    is " << config.roi_width    << std::endl;
+  std::cout << "config.roi_height   is " << config.roi_height   << std::endl;
+
+  int binning_or_decimation_x = std::max(config.binning_x, config.decimation_x);
+  int binning_or_decimation_y = std::max(config.binning_y, config.decimation_y);
+
+  max_width *= binning_or_decimation_x;
+  max_height *= binning_or_decimation_y;
 
   config.width        = std::min(config.width,  (int)max_width);
   config.height       = std::min(config.height, (int)max_height);
@@ -989,18 +1004,25 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
 
   // Adjust full-res ROI to binning ROI
   /// @todo Replicating logic from polledCallback
-  int offset_x = config.roi_offset_x / config.binning_x;
-  int offset_y = config.roi_offset_y / config.binning_y;
-  unsigned int right_x  = (config.roi_offset_x + width  + config.binning_x - 1) / config.binning_x;
-  unsigned int bottom_y = (config.roi_offset_y + height + config.binning_y - 1) / config.binning_y;
+  int offset_x = config.roi_offset_x;
+  int offset_y = config.roi_offset_y;
+  unsigned int right_x  = (offset_x + width  + binning_or_decimation_x - 1);
+  unsigned int bottom_y = (offset_y + height + binning_or_decimation_y - 1);
   // Rounding up is bad when at max resolution which is not divisible by the amount of binning
-  right_x  = std::min(right_x,  (unsigned)(config.width  / config.binning_x));
-  bottom_y = std::min(bottom_y, (unsigned)(config.height / config.binning_y));
+  right_x  = std::min(right_x,  (unsigned)(config.width));
+  bottom_y = std::min(bottom_y, (unsigned)(config.height));
   width    = right_x  - offset_x;
   height   = bottom_y - offset_y;
 
-  config.width  = width;
-  config.height = height;
+  config.width  = width/binning_or_decimation_x;
+  config.height = height/binning_or_decimation_y;
+  config.roi_offset_x = offset_x/binning_or_decimation_x;
+  config.roi_offset_y = offset_y/binning_or_decimation_y;
+
+  std::cout << "config.width        is " << config.width        << std::endl;
+  std::cout << "config.height       is " << config.height       << std::endl;
+  std::cout << "config.roi_offset_x is " << config.roi_offset_x << std::endl;
+  std::cout << "config.roi_offset_y is " << config.roi_offset_y << std::endl;
 
   if (config.roi_offset_x != config_.roi_offset_x || on_init_) {
     changed = true;
