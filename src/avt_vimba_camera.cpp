@@ -234,7 +234,8 @@ void AvtVimbaCamera::updateConfig(Config& config) {
     config_ = config;
   }
   diagnostic_msg_ = "Updating configuration";
-  ROS_DEBUG_STREAM("Updating configuration for camera " << config.frame_id);
+  if(show_debug_prints_)
+    ROS_INFO_STREAM("Updating configuration for camera " << config.frame_id);
   updateExposureConfig(config);
   updateGainConfig(config);
   updateWhiteBalanceConfig(config);
@@ -282,14 +283,16 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
     camera->GetInterfaceType(cam_int_type);
     err = camera->GetPermittedAccess(accessMode);
 
-    ROS_DEBUG_STREAM("[" << name_ << "]: Opened camera with"
-    << "\n\t\t * Name     : " << cam_name
-    << "\n\t\t * Model    : " << cam_model
-    << "\n\t\t * ID       : " << cam_id
-    << "\n\t\t * S/N      : " << cam_sn
-    << "\n\t\t * Itf. ID  : " << cam_int_id
-    << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
-    << "\n\t\t * Access   : " << accessModeToString(accessMode));
+    if(show_debug_prints_) {
+      ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
+      << "\n\t\t * Name     : " << cam_name
+      << "\n\t\t * Model    : " << cam_model
+      << "\n\t\t * ID       : " << cam_id
+      << "\n\t\t * S/N      : " << cam_sn
+      << "\n\t\t * Itf. ID  : " << cam_int_id
+      << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
+      << "\n\t\t * Access   : " << accessModeToString(accessMode));
+    }
 
     err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err) {
@@ -448,9 +451,11 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str,
     ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str);
   }
-  ROS_DEBUG_STREAM("Asking for feature " << feature_str
-    << " with datatype " << FeatureDataType[data_type]
-    << " and value " << val);
+  if(show_debug_prints_) {
+    ROS_INFO_STREAM("Asking for feature " << feature_str
+      << " with datatype " << FeatureDataType[data_type]
+      << " and value " << val);
+  }
   return (VmbErrorSuccess == err);
 }
 
@@ -467,7 +472,8 @@ bool AvtVimbaCamera::setFeatureValue(const std::string& feature_str,
     err = vimba_feature_ptr->IsWritable(writable);
     if (VmbErrorSuccess == err) {
       if (writable) {
-        ROS_DEBUG_STREAM("Setting feature " << feature_str << " value " << val);
+        if(show_debug_prints_)
+          ROS_INFO_STREAM("Setting feature " << feature_str << " value " << val);
         VmbFeatureDataType data_type;
         err = vimba_feature_ptr->GetDataType(data_type);
         if (VmbErrorSuccess == err) {
@@ -525,10 +531,13 @@ bool AvtVimbaCamera::runCommand(const std::string& command_str) {
         if ( VmbErrorSuccess != err ) {
           break;
         }
-        ROS_DEBUG_STREAM_THROTTLE(1, "Waiting for command "
-          << command_str.c_str() << "...");
+        if(show_debug_prints_) {
+          ROS_INFO_STREAM_THROTTLE(1, "Waiting for command "
+            << command_str.c_str() << "...");
+        }
       } while ( false == is_command_done );
-      ROS_DEBUG_STREAM("Command " << command_str.c_str() << " done!");
+      if(show_debug_prints_)
+        ROS_INFO_STREAM("Command " << command_str.c_str() << " done!");
       return true;
     } else {
       ROS_WARN_STREAM("[" << name_
@@ -977,15 +986,6 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   getFeatureValue("WidthMax", max_width);
   getFeatureValue("HeightMax", max_height);
 
-  std::cout << "WidthMax            is " << max_width        << std::endl;
-  std::cout << "HeightMax           is " << max_height        << std::endl;
-  std::cout << "config.width        is " << config.width        << std::endl;
-  std::cout << "config.height       is " << config.height       << std::endl;
-  std::cout << "config.roi_offset_x is " << config.roi_offset_x << std::endl;
-  std::cout << "config.roi_offset_y is " << config.roi_offset_y << std::endl;
-  std::cout << "config.roi_width    is " << config.roi_width    << std::endl;
-  std::cout << "config.roi_height   is " << config.roi_height   << std::endl;
-
   int binning_or_decimation_x = std::max(config.binning_x, config.decimation_x);
   int binning_or_decimation_y = std::max(config.binning_y, config.decimation_y);
 
@@ -1018,11 +1018,6 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   config.height = height/binning_or_decimation_y;
   config.roi_offset_x = offset_x/binning_or_decimation_x;
   config.roi_offset_y = offset_y/binning_or_decimation_y;
-
-  std::cout << "config.width        is " << config.width        << std::endl;
-  std::cout << "config.height       is " << config.height       << std::endl;
-  std::cout << "config.roi_offset_x is " << config.roi_offset_x << std::endl;
-  std::cout << "config.roi_offset_y is " << config.roi_offset_y << std::endl;
 
   if (config.roi_offset_x != config_.roi_offset_x || on_init_) {
     changed = true;

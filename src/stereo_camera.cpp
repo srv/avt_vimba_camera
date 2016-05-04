@@ -36,8 +36,6 @@
 #include <boost/bind.hpp>
 #include <boost/thread/thread.hpp>
 
-#define DEBUG_PRINTS 1
-
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
@@ -347,13 +345,6 @@ void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   right_ci.roi.y_offset = config.roi_offset_y/binning_or_decimation_y;
   right_ci.roi.height   = config.roi_height/binning_or_decimation_x;
   right_ci.roi.width    = config.roi_width/binning_or_decimation_y;
-
-  std::cout << "stereoconfig.width        is " << left_ci.width       << std::endl;
-  std::cout << "stereoconfig.height       is " << left_ci.height       << std::endl;
-  std::cout << "stereoconfig.roi_offset_x is " << left_ci.roi.x_offset << std::endl;
-  std::cout << "stereoconfig.roi_offset_y is " << left_ci.roi.y_offset << std::endl;
-  std::cout << "stereoconfig.roi_width    is " << left_ci.roi.height   << std::endl;
-  std::cout << "stereoconfig.roi_height   is " << left_ci.roi.width    << std::endl;
 
   std::string left_camera_info_url, right_camera_info_url;
   nhp_.getParamCached("left_camera_info_url", left_camera_info_url);
