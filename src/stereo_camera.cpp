@@ -64,7 +64,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
 
   double max_allowed_time_error_double;
-  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 10e6);  // time in nanoseconds
+  nhp_.param("max_allowed_nsec_error", max_nsec_sync_error_, 10e8);  // time in nanoseconds
   nhp_.param("show_debug_prints", show_debug_prints_, false);
 
   // Publish a hardware message to know & track the state of the cam
@@ -156,7 +156,7 @@ void StereoCamera::sync(void) {
       right_ready_ = false;
       left_ready_ = false;
     } else {
-      ROS_WARN_STREAM("Frames not properly sync'ed. Error time is " << abs(left_time_.toNSec() - right_time_.toNSec()) << " nsec");
+      ROS_WARN_STREAM("Frames not properly sync'ed. Error time is " << abs(left_time_.toNSec() - right_time_.toNSec()) << " nsec (max: " << max_nsec_sync_error_ << ").");
     }
   } else if (left_ready_ && left_has_subscribers && !right_has_subscribers) {
     //ROS_INFO_STREAM("Publishing left only");
