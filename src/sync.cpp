@@ -47,7 +47,7 @@ Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), is_rese
 void Sync::run()
 {
   // Wait until camera driver starts
-  ros::Duration(5.0).sleep();
+  ros::Duration(10.0).sleep();
 
   // Create the approximate sync subscriber
   image_transport::ImageTransport it(nh_);
