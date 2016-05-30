@@ -34,7 +34,7 @@
 #include <driver_base/SensorLevels.h>
 
 #include <boost/bind.hpp>
-#include <thread>
+#include <boost/thread/thread.hpp>
 
 namespace avt_vimba_camera {
 
@@ -49,14 +49,11 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   right_pub_ = it_.advertiseCamera("right/image_raw", 1);
   left_frames_ = 0;
   right_frames_ = 0;
+  synced_frames_ = 0;
 
   // Set the frame callbacks
-  std::thread left_thread([&]() {
-    left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
-  });
-  std::thread right_thread([&]() {
-    right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
-  });
+  left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
+  right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -105,11 +102,11 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
-      lci.header.stamp = ros_time;
-      left_img_.header.stamp = ros_time;
-      left_img_.header.frame_id = lci.header.frame_id;
-      left_pub_.publish(left_img_, lci);
+      left_img_ = img;
+      left_ready_ = true;
+      left_time_ = ros_time;
+      vimba_frame_ptr->GetTimestamp(left_timestamp_);
+      sync();
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
@@ -124,15 +121,59 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
-      sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
-      rci.header.stamp = ros_time;
-      right_img_.header.stamp = ros_time;
-      right_img_.header.frame_id = rci.header.frame_id;
-      right_pub_.publish(right_img_, rci);
+      right_img_ = img;
+      right_ready_ = true;
+      right_time_ = ros_time;
+      vimba_frame_ptr->GetTimestamp(right_timestamp_);
+      sync();
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
+  }
+}
+
+void StereoCamera::sync(void) {
+  bool left_has_subscribers = left_pub_.getNumSubscribers() > 0;
+  bool right_has_subscribers = right_pub_.getNumSubscribers() > 0;
+  if (left_ready_ && right_ready_ && left_has_subscribers && right_has_subscribers) {
+    if( abs(left_time_.toNSec() - right_time_.toNSec()) <= max_nsec_sync_error_ ) {
+      synced_frames_++;
+      //ROS_INFO_STREAM("Publishing sync'd pair with " << abs(left_time_.toNSec() - right_time_.toNSec()) << " ns error. Dropped frames: " << left_frames_ + right_frames_ - 2 * synced_frames_ );
+      ros::Time ros_time = left_time_;
+      sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+      sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+
+      lci.header.stamp = ros_time;
+      left_img_.header.stamp = ros_time;
+      left_img_.header.frame_id = lci.header.frame_id;
+      rci.header.stamp = ros_time;
+      right_img_.header.stamp = ros_time;
+      right_img_.header.frame_id = rci.header.frame_id;
+      left_pub_.publish(left_img_, lci);
+      right_pub_.publish(right_img_, rci);
+      // pub_freq_->tick(ros_time);
+      right_ready_ = false;
+      left_ready_ = false;
+    } else {
+      ROS_WARN_STREAM("Frames not properly sync'ed. Error time is " << abs(left_time_.toNSec() - right_time_.toNSec()) << " nsec (max: " << max_nsec_sync_error_ << ").");
+    }
+  } else if (left_ready_ && left_has_subscribers && !right_has_subscribers) {
+    //ROS_INFO_STREAM("Publishing left only");
+    sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+    lci.header.stamp = left_time_;
+    left_img_.header.stamp = left_time_;
+    left_img_.header.frame_id = lci.header.frame_id;
+    left_pub_.publish(left_img_, lci);
+    left_ready_ = false;
+  } else if (right_ready_ && !left_has_subscribers && right_has_subscribers) {
+    //ROS_INFO_STREAM("Publishing right only");
+    sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+    rci.header.stamp = right_time_;
+    right_img_.header.stamp = right_time_;
+    right_img_.header.frame_id = rci.header.frame_id;
+    right_pub_.publish(right_img_, rci);
+    right_ready_ = false;
   }
 }
 
@@ -353,5 +394,12 @@ void StereoCamera::syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &s
 {
   stat.add("Number of left frames", left_frames_);
   stat.add("Number of right frames", right_frames_);
+  stat.add("Number of sync'd frames", synced_frames_);
+  stat.add("Dropped % sync'd frames", 200 * (double)synced_frames_ / ((double)left_frames_ + (double)right_frames_));
+
+  if (synced_frames_ <= left_frames_)
+    stat.summary(diagnostic_msgs::DiagnosticStatus::OK, "Sync'd images.");
+  else
+    stat.summary(diagnostic_msgs::DiagnosticStatus::WARN, "Wrong synchronization");
 }
 };

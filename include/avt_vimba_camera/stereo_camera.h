@@ -65,9 +65,15 @@ class StereoCamera {
   diagnostic_updater::TopicDiagnostic* pub_freq_;
   diagnostic_updater::FunctionDiagnosticTask* sync_check_;
 
+  bool left_ready_;
   long long unsigned int left_frames_;
   long long unsigned int right_frames_;
+  long long unsigned int synced_frames_;
+  bool right_ready_;
   bool show_debug_prints_;
+
+  long long unsigned int left_timestamp_;
+  long long unsigned int right_timestamp_;
 
   // Parameters
   std::string left_ip_;
