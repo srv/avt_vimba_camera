@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   dynamic_reconfigure
   image_geometry
   image_transport
+  message_filters
   roscpp
   sensor_msgs
   std_msgs
@@ -81,6 +82,13 @@ add_executable(stereo_camera_node
 )
 
 add_dependencies_and_linkings(stereo_camera_node)
+
+add_executable(sync_node
+  src/nodes/sync_node.cpp
+  src/sync.cpp
+)
+
+add_dependencies_and_linkings(sync_node)
 
 #############
 ## Install ##
