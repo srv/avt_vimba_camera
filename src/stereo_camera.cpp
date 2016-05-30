@@ -34,7 +34,7 @@
 #include <driver_base/SensorLevels.h>
 
 #include <boost/bind.hpp>
-#include <boost/thread/thread.hpp>
+#include <thread>
 
 namespace avt_vimba_camera {
 
@@ -52,8 +52,12 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   synced_frames_ = 0;
 
   // Set the frame callbacks
-  left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
-  right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
+  std::thread left_thread([&]() {
+    left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
+  });
+  std::thread right_thread([&]() {
+    right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
+  });
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
