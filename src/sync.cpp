@@ -35,7 +35,7 @@
 
 namespace avt_vimba_camera {
 
-Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(false), is_resetting_(false), lock_timer_(false)
+Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(false), is_resetting_(false), lock_timer_(false), it_(nh)
 {
   // Read params
   nhp_.param("camera", camera_, string("/stereo_down"));
@@ -46,18 +46,14 @@ Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(f
 
 void Sync::run()
 {
-  // Wait until camera driver starts
-  ros::WallDuration(10.0).sleep();
-
   // Create the approximate sync subscriber
-  image_transport::ImageTransport it(nh_);
   image_transport::SubscriberFilter left_sub, right_sub;
   message_filters::Subscriber<sensor_msgs::CameraInfo> left_info_sub, right_info_sub;
 
-  left_sub      .subscribe(it, camera_+"/left/image_raw", 5);
-  right_sub     .subscribe(it, camera_+"/right/image_raw", 5);
-  left_info_sub .subscribe(nh_, camera_+"/left/camera_info",  5);
-  right_info_sub.subscribe(nh_, camera_+"/right/camera_info", 5);
+  left_sub      .subscribe(it_, camera_+"_unsync/left/image_raw", 5);
+  right_sub     .subscribe(it_, camera_+"_unsync/right/image_raw", 5);
+  left_info_sub .subscribe(nh_, camera_+"_unsync/left/camera_info",  5);
+  right_info_sub.subscribe(nh_, camera_+"_unsync/right/camera_info", 5);
 
   boost::shared_ptr<SyncType> sync_var;
   sync_var.reset(new SyncType(SyncPolicy(5), left_sub, right_sub, left_info_sub, right_info_sub) );
@@ -65,6 +61,10 @@ void Sync::run()
 
   // Sync timer
   sync_timer_ = nh_.createTimer(ros::Duration(1.0/desired_freq_), &Sync::syncCallback, this);
+
+  // Republish cameras
+  left_pub_  = it_.advertiseCamera(camera_+"/left/image_raw",  1);
+  right_pub_ = it_.advertiseCamera(camera_+"/right/image_raw", 1);
 
   // Publish info
   pub_info_ = nhp_.advertise<std_msgs::String>("info", 1, true);
@@ -79,8 +79,33 @@ void Sync::msgsCallback(const sensor_msgs::ImageConstPtr& l_img_msg,
 {
   if (!init_)
     ROS_INFO("[SyncNode]: Initialized.");
-
   init_ = true;
+
+  // Check time sync
+  double l_time = l_img_msg->header.stamp.toSec();
+  double r_time = r_img_msg->header.stamp.toSec();
+  double time_error = fabs(l_time - r_time);
+  if (time_error > 0.1)
+  {
+    ROS_WARN_STREAM("[SyncNode]: Left and right images not properly synced (e=" << time_error << "s.)");
+  }
+  else
+  {
+    // Set the same time
+    ros::Time now = ros::Time::now();
+    sensor_msgs::Image l_img = *l_img_msg;
+    sensor_msgs::Image r_img = *r_img_msg;
+    sensor_msgs::CameraInfo l_info = *l_info_msg;
+    sensor_msgs::CameraInfo r_info = *r_info_msg;
+
+    l_info.header.stamp = now;
+    l_img.header.stamp = now;
+    r_info.header.stamp = now;
+    r_img.header.stamp = now;
+    left_pub_.publish(l_img, l_info);
+    right_pub_.publish(r_img, r_info);
+  }
+
   last_wall_sync_ = ros::WallTime::now().toSec();
   last_ros_sync_ = ros::Time::now().toSec();
 }

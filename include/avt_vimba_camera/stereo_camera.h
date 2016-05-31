@@ -65,16 +65,7 @@ class StereoCamera {
   diagnostic_updater::Updater updater_;
   diagnostic_updater::TopicDiagnostic* pub_freq_;
   diagnostic_updater::FunctionDiagnosticTask* sync_check_;
-
-  bool left_ready_;
-  long long unsigned int left_frames_;
-  long long unsigned int right_frames_;
-  long long unsigned int synced_frames_;
-  bool right_ready_;
   bool show_debug_prints_;
-
-  long long unsigned int left_timestamp_;
-  long long unsigned int right_timestamp_;
 
   // Parameters
   std::string left_ip_;
@@ -83,16 +74,6 @@ class StereoCamera {
   std::string right_guid_;
   std::string left_camera_info_url_;
   std::string right_camera_info_url_;
-
-  // Sync parameters
-  std::string left_sync_out_source_;
-  std::string left_trigger_source_;
-  std::string right_trigger_source_;
-  std::string right_sync_in_selector_;
-
-  ros::Time left_time_;
-  ros::Time right_time_;
-  double max_nsec_sync_error_;
 
   // Node handles
   ros::NodeHandle nh_;
@@ -110,9 +91,6 @@ class StereoCamera {
   // Publish camera temperatures
   ros::Publisher pub_left_temp_;
   ros::Publisher pub_right_temp_;
-
-  sensor_msgs::Image left_img_;
-  sensor_msgs::Image right_img_;
 
   boost::shared_ptr<camera_info_manager::CameraInfoManager> left_info_man_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> right_info_man_;
@@ -132,7 +110,6 @@ class StereoCamera {
   void updateCameraInfo(const StereoConfig& config);
   void copyConfig(StereoConfig& sc, Config& lc, Config& rc);
   void sync(void);
-  void syncDiagnostic(diagnostic_updater::DiagnosticStatusWrapper &stat);
 };
 }
 #endif

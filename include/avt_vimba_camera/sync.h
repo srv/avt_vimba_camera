@@ -87,6 +87,13 @@ class Sync {
                                                             sensor_msgs::CameraInfo> SyncPolicy;
     typedef message_filters::Synchronizer<SyncPolicy> SyncType;
 
+    // Image transport
+    image_transport::ImageTransport it_;
+
+    // ROS Camera publisher
+    image_transport::CameraPublisher left_pub_;
+    image_transport::CameraPublisher right_pub_;
+
     ros::Publisher pub_info_; //!> Publish reset info
 };
 }
