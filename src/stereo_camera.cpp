@@ -84,6 +84,9 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
   right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "right"),"right_optical",right_camera_info_url_));
 
+  pub_left_temp_ = nhp_.advertise<std_msgs::Float64>("left_temp", 1, true);
+  pub_right_temp_ = nhp_.advertise<std_msgs::Float64>("right_temp", 1, true);
+
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
 }
@@ -112,6 +115,13 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
   }
+
+  if (pub_left_temp_.getNumSubscribers() > 0) {
+    std_msgs::Float64 msg;
+    msg.data = left_cam_.getDeviceTemp();
+    pub_left_temp_.publish(msg);
+  }
+
   updater_.update();
 }
 
@@ -130,6 +140,12 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }
+  }
+
+  if (pub_right_temp_.getNumSubscribers() > 0) {
+    std_msgs::Float64 msg;
+    msg.data = right_cam_.getDeviceTemp();
+    pub_right_temp_.publish(msg);
   }
 }
 

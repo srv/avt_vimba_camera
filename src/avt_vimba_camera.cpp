@@ -327,6 +327,18 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   updater_.update();
 }
 
+double AvtVimbaCamera::getDeviceTemp(void) {
+  double temp = -1.0;
+  if (setFeatureValue("DeviceTemperatureSelector", "Main")) {
+    getFeatureValue("DeviceTemperature", temp);
+  }
+  return temp;
+}
+
+bool AvtVimbaCamera::resetTimestamp(void) {
+  return runCommand("GevTimestampControlReset");
+}
+
 double AvtVimbaCamera::getTimestamp(void) {
   double timestamp = -1.0;
   if (runCommand("GevTimestampControlLatch")) {
@@ -336,10 +348,6 @@ double AvtVimbaCamera::getTimestamp(void) {
     timestamp = ((double)ticks)/((double)freq);
   }
   return timestamp;
-}
-
-bool AvtVimbaCamera::resetTimestamp(void) {
-  return runCommand("GevTimestampControlReset");
 }
 
 // Template function to GET a feature value from the camera

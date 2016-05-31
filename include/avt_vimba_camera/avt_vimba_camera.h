@@ -81,6 +81,7 @@ class AvtVimbaCamera {
   void stop();
   double getTimestamp(void);
   bool resetTimestamp(void);
+  double getDeviceTemp(void);
 
   CameraPtr getCameraPtr(void) {
     return vimba_camera_ptr_;

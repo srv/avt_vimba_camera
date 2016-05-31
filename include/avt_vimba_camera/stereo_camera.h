@@ -44,6 +44,7 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
+#include <std_msgs/Float64.h>
 
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
@@ -105,6 +106,10 @@ class StereoCamera {
   // ROS Camera publisher
   image_transport::CameraPublisher left_pub_;
   image_transport::CameraPublisher right_pub_;
+
+  // Publish camera temperatures
+  ros::Publisher pub_left_temp_;
+  ros::Publisher pub_right_temp_;
 
   sensor_msgs::Image left_img_;
   sensor_msgs::Image right_img_;
