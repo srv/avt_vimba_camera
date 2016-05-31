@@ -66,6 +66,7 @@ class Sync {
     ros::NodeHandle nh_;
     ros::NodeHandle nhp_;
 
+    bool init_; //!> True when node is initialized.
     double last_wall_sync_; //!> Last wall time sync
     double last_ros_sync_; //!> Last ros time sync
     double max_unsync_time_; //!> Maximum time without sync to re-launch the driver
@@ -74,6 +75,7 @@ class Sync {
     double reset_time_; //!> Time at which a reset was produced
     bool is_resetting_; //!> True while driver resetting
     ros::Timer sync_timer_; //!> Timer to check the image sync
+    bool lock_timer_; //!> Lock timer
 
     string camera_; //!> Camera name
     string camera_node_name_; //!> Camera node name

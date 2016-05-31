@@ -35,7 +35,7 @@
 
 namespace avt_vimba_camera {
 
-Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), is_resetting_(false)
+Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(false), is_resetting_(false), lock_timer_(false)
 {
   // Read params
   nhp_.param("camera", camera_, string("/stereo_down"));
@@ -47,7 +47,7 @@ Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), is_rese
 void Sync::run()
 {
   // Wait until camera driver starts
-  ros::Duration(10.0).sleep();
+  ros::WallDuration(10.0).sleep();
 
   // Create the approximate sync subscriber
   image_transport::ImageTransport it(nh_);
@@ -77,12 +77,20 @@ void Sync::msgsCallback(const sensor_msgs::ImageConstPtr& l_img_msg,
                         const sensor_msgs::CameraInfoConstPtr& l_info_msg,
                         const sensor_msgs::CameraInfoConstPtr& r_info_msg)
 {
+  if (!init_)
+    ROS_INFO("[SyncNode]: Initialized.");
+
+  init_ = true;
   last_wall_sync_ = ros::WallTime::now().toSec();
   last_ros_sync_ = ros::Time::now().toSec();
 }
 
 void Sync::syncCallback(const ros::TimerEvent&)
 {
+  if (!init_) return;
+  if (lock_timer_) return;
+  lock_timer_ = true;
+
   double now = ros::Time::now().toSec();
   double wall_now = ros::WallTime::now().toSec();
 
@@ -90,7 +98,10 @@ void Sync::syncCallback(const ros::TimerEvent&)
   if (is_resetting_)
   {
     if (now - reset_time_ < reset_wait_time_)
+    {
+      lock_timer_ = false;
       return;
+    }
     else
       is_resetting_ = false;
   }
@@ -102,8 +113,11 @@ void Sync::syncCallback(const ros::TimerEvent&)
     ROS_WARN_STREAM("[SyncNode]: No sync during " << now - last_ros_sync_ << " sec. Reseting driver...");
 
     // Restart driver
-    string cmd = "rosnode kill " + camera_node_name_;
-    system(cmd.c_str());
+    string cmd_kill = "rosnode kill " + camera_node_name_;
+    system(cmd_kill.c_str());
+    ros::WallDuration(5.0).sleep();
+    string cmd_launch = "roslaunch turbot avt_vimba_camera.launch";
+    system(cmd_launch.c_str());
 
     // Publish info
     std_msgs::String msg;
@@ -115,6 +129,8 @@ void Sync::syncCallback(const ros::TimerEvent&)
     reset_time_ = now;
     is_resetting_ = true;
   }
+
+  lock_timer_ = false;
 }
 
 
