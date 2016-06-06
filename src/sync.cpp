@@ -35,13 +35,12 @@
 
 namespace avt_vimba_camera {
 
-Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(false), is_resetting_(false), lock_timer_(false), it_(nh)
+Sync::Sync(ros::NodeHandle nh, ros::NodeHandle nhp): nh_(nh), nhp_(nhp), init_(false), it_(nh)
 {
   // Read params
   nhp_.param("camera", camera_, string("/stereo_down"));
-  nhp_.param("camera_node_name", camera_node_name_, string("stereo_down"));
-  nhp_.param("desired_freq", desired_freq_, 7.5);
-  nhp_.param("reset_wait_time", reset_wait_time_, 20.0);
+  nhp_.param("timer_period", timer_period_, 10.0);
+  nhp_.param("max_unsync_time", max_unsync_time_, 5.0);
 }
 
 void Sync::run()
@@ -50,21 +49,17 @@ void Sync::run()
   image_transport::SubscriberFilter left_sub, right_sub;
   message_filters::Subscriber<sensor_msgs::CameraInfo> left_info_sub, right_info_sub;
 
-  left_sub      .subscribe(it_, camera_+"_unsync/left/image_raw", 5);
-  right_sub     .subscribe(it_, camera_+"_unsync/right/image_raw", 5);
-  left_info_sub .subscribe(nh_, camera_+"_unsync/left/camera_info",  5);
-  right_info_sub.subscribe(nh_, camera_+"_unsync/right/camera_info", 5);
+  left_sub      .subscribe(it_, camera_+"/left/image_raw", 5);
+  right_sub     .subscribe(it_, camera_+"/right/image_raw", 5);
+  left_info_sub .subscribe(nh_, camera_+"/left/camera_info",  5);
+  right_info_sub.subscribe(nh_, camera_+"/right/camera_info", 5);
 
   boost::shared_ptr<SyncType> sync_var;
   sync_var.reset(new SyncType(SyncPolicy(5), left_sub, right_sub, left_info_sub, right_info_sub) );
   sync_var->registerCallback(bind(&Sync::msgsCallback, this, _1, _2, _3, _4));
 
   // Sync timer
-  sync_timer_ = nh_.createTimer(ros::Duration(1.0/desired_freq_), &Sync::syncCallback, this);
-
-  // Republish cameras
-  left_pub_  = it_.advertiseCamera(camera_+"/left/image_raw",  1);
-  right_pub_ = it_.advertiseCamera(camera_+"/right/image_raw", 1);
+  sync_timer_ = nh_.createTimer(ros::Duration(timer_period_), &Sync::syncCallback, this);
 
   // Publish info
   pub_info_ = nhp_.advertise<std_msgs::String>("info", 1, true);
@@ -81,58 +76,17 @@ void Sync::msgsCallback(const sensor_msgs::ImageConstPtr& l_img_msg,
     ROS_INFO("[SyncNode]: Initialized.");
   init_ = true;
 
-  // Check time sync
-  double l_time = l_img_msg->header.stamp.toSec();
-  double r_time = r_img_msg->header.stamp.toSec();
-  double time_error = fabs(l_time - r_time);
-  if (time_error > 0.1)
-  {
-    ROS_WARN_STREAM("[SyncNode]: Left and right images not properly synced (e=" << time_error << "s.)");
-  }
-  else
-  {
-    // Set the same time
-    ros::Time now = ros::Time::now();
-    sensor_msgs::Image l_img = *l_img_msg;
-    sensor_msgs::Image r_img = *r_img_msg;
-    sensor_msgs::CameraInfo l_info = *l_info_msg;
-    sensor_msgs::CameraInfo r_info = *r_info_msg;
-
-    l_info.header.stamp = now;
-    l_img.header.stamp = now;
-    r_info.header.stamp = now;
-    r_img.header.stamp = now;
-    left_pub_.publish(l_img, l_info);
-    right_pub_.publish(r_img, r_info);
-  }
-
-  last_wall_sync_ = ros::WallTime::now().toSec();
   last_ros_sync_ = ros::Time::now().toSec();
 }
 
 void Sync::syncCallback(const ros::TimerEvent&)
 {
   if (!init_) return;
-  if (lock_timer_) return;
-  lock_timer_ = true;
 
   double now = ros::Time::now().toSec();
-  double wall_now = ros::WallTime::now().toSec();
-
-  // Exit if resetting...
-  if (is_resetting_)
-  {
-    if (now - reset_time_ < reset_wait_time_)
-    {
-      lock_timer_ = false;
-      return;
-    }
-    else
-      is_resetting_ = false;
-  }
 
   // Check desired frequency
-  if (now - last_ros_sync_ > 40.0/desired_freq_)
+  if (now - last_ros_sync_ > max_unsync_time_)
   {
     // No sync!
     ROS_WARN_STREAM("[SyncNode]: No sync during " << now - last_ros_sync_ << " sec. Reseting driver...");
@@ -140,27 +94,9 @@ void Sync::syncCallback(const ros::TimerEvent&)
     // Publish info
     std_msgs::String msg;
     msg.data = "Reseting camera driver at ROSTIME: " +
-               boost::lexical_cast<string>(now) + "s. (ROSWALLTIME: " +
-               boost::lexical_cast<string>(wall_now) + "s.).";
+               boost::lexical_cast<string>(now) + "s.";
     pub_info_.publish(msg);
-
-    // Restart driver
-    if (ros::ok())
-    {
-      string cmd_kill = "rosnode kill " + camera_node_name_;
-      system(cmd_kill.c_str());
-      ros::WallDuration(5.0).sleep();
-      string cmd_launch = "roslaunch turbot avt_vimba_camera.launch &";
-      system(cmd_launch.c_str());
-      ros::WallDuration(5.0).sleep();
-    }
-
-    init_ = false;
-    reset_time_ = now;
-    is_resetting_ = true;
   }
-
-  lock_timer_ = false;
 }
 
 

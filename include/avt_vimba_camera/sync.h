@@ -67,18 +67,11 @@ class Sync {
     ros::NodeHandle nhp_;
 
     bool init_; //!> True when node is initialized.
-    double last_wall_sync_; //!> Last wall time sync
     double last_ros_sync_; //!> Last ros time sync
-    double max_unsync_time_; //!> Maximum time without sync to re-launch the driver
-    double desired_freq_; //!> Desired stereo frequency
-    double reset_wait_time_; //!> Time to wait after a reset
-    double reset_time_; //!> Time at which a reset was produced
-    bool is_resetting_; //!> True while driver resetting
+    double timer_period_; //!> Timer period
+    double max_unsync_time_; //!> Maximum time without sync
     ros::Timer sync_timer_; //!> Timer to check the image sync
-    bool lock_timer_; //!> Lock timer
-
     string camera_; //!> Camera name
-    string camera_node_name_; //!> Camera node name
 
     // Topic sync
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image,
@@ -89,10 +82,6 @@ class Sync {
 
     // Image transport
     image_transport::ImageTransport it_;
-
-    // ROS Camera publisher
-    image_transport::CameraPublisher left_pub_;
-    image_transport::CameraPublisher right_pub_;
 
     ros::Publisher pub_info_; //!> Publish reset info
 };
