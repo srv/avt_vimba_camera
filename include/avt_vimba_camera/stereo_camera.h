@@ -56,6 +56,7 @@ class StereoCamera {
  public:
   StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp);
   ~StereoCamera(void);
+  void run();
 
  private:
   AvtVimbaApi api_;
@@ -104,12 +105,21 @@ class StereoCamera {
   // Camera configuration
   StereoConfig camera_config_;
 
+  // Check for errors
+  ros::Timer check_timer_; //!> Timer to check the image errors
+  double desired_freq_; //!> Desired image freq
+  bool left_init_;
+  bool right_init_;
+  double l_last_time_;
+  double r_last_time_;
+
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);
   void configure(StereoConfig& newconfig, uint32_t level);
   void updateCameraInfo(const StereoConfig& config);
   void copyConfig(StereoConfig& sc, Config& lc, Config& rc);
   void sync(void);
+  void checkCallback(const ros::TimerEvent&);
 };
 }
 #endif

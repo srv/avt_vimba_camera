@@ -39,18 +39,8 @@
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
-:nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right") {
-  // TODO use nodelets with getMTNodeHandle()
-  // Start Vimba & list all available cameras
-  api_.start();
-
-  // Set the image publishers before the streaming
-  left_pub_  = it_.advertiseCamera("/stereo_down_unsync/left/image_raw",  1);
-  right_pub_ = it_.advertiseCamera("/stereo_down_unsync/right/image_raw", 1);
-
-  // Set the frame callbacks
-  left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
-  right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
+:nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
+ desired_freq_(7.5), left_init_(false), right_init_(false) {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -60,6 +50,28 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
+}
+
+StereoCamera::~StereoCamera() {
+  left_cam_.stop();
+  right_cam_.stop();
+  updater_.broadcast(0, "Device is closed.");
+  left_pub_.shutdown();
+  right_pub_.shutdown();
+}
+
+void StereoCamera::run() {
+  // TODO use nodelets with getMTNodeHandle()
+  // Start Vimba & list all available cameras
+  api_.start();
+
+  // Set the image publishers before the streaming
+  left_pub_  = it_.advertiseCamera("/stereo_down/left/image_raw",  1);
+  right_pub_ = it_.advertiseCamera("/stereo_down/right/image_raw", 1);
+
+  // Set the frame callbacks
+  left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
+  right_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::rightFrameCallback, this, _1));
 
   // Publish a hardware message to know & track the state of the cam
   updater_.setHardwareID("Stereo-"+left_guid_+"-"+right_guid_);
@@ -74,26 +86,24 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   updater_.update();
 
   // Set camera info managers
-  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "left"),"left_optical",left_camera_info_url_));
-  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp, "right"),"right_optical",right_camera_info_url_));
+  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "left"),"left_optical",left_camera_info_url_));
+  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "right"),"right_optical",right_camera_info_url_));
 
   pub_left_temp_ = nhp_.advertise<std_msgs::Float64>("left_temp", 1, true);
   pub_right_temp_ = nhp_.advertise<std_msgs::Float64>("right_temp", 1, true);
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
-}
 
-StereoCamera::~StereoCamera() {
-  left_cam_.stop();
-  right_cam_.stop();
-  updater_.broadcast(0, "Device is closed.");
-  left_pub_.shutdown();
-  right_pub_.shutdown();
+  // Check timer
+  check_timer_ = nh_.createTimer(ros::Duration(1.0/desired_freq_), &StereoCamera::checkCallback, this);
+
 }
 
 void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
+  left_init_ = true;
   ros::Time ros_time = ros::Time::now();
+  l_last_time_ = ros_time.toSec();
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
@@ -120,7 +130,9 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
 }
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
+  right_init_ = true;
   ros::Time ros_time = ros::Time::now();
+  r_last_time_ = ros_time.toSec();
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
@@ -355,5 +367,30 @@ void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   // push the changes to manager
   left_info_man_->setCameraInfo(left_ci);
   right_info_man_->setCameraInfo(right_ci);
+}
+
+void StereoCamera::checkCallback(const ros::TimerEvent&) {
+  if (left_init_) {
+    double now = ros::Time::now().toSec();
+    if (now - l_last_time_ > 10/desired_freq_) {
+      ROS_WARN("Left camera not publishing. Reseting...");
+      left_init_ = false;
+      left_cam_.stop();
+      ros::WallDuration(2.0).sleep();
+      left_cam_.start(left_ip_, left_guid_, show_debug_prints_);
+      ROS_INFO("Left camera reset!");
+    }
+  }
+  if (right_init_) {
+    double now = ros::Time::now().toSec();
+    if (now - r_last_time_ > 10/desired_freq_) {
+      ROS_WARN("Right camera not publishing. Reseting...");
+      right_init_ = false;
+      right_cam_.stop();
+      ros::WallDuration(2.0).sleep();
+      right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
+      ROS_INFO("Right camera reset!");
+    }
+  }
 }
 };

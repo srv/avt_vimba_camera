@@ -132,17 +132,10 @@ void Sync::syncCallback(const ros::TimerEvent&)
   }
 
   // Check desired frequency
-  if (now - last_ros_sync_ > 2.0/desired_freq_)
+  if (now - last_ros_sync_ > 40.0/desired_freq_)
   {
     // No sync!
     ROS_WARN_STREAM("[SyncNode]: No sync during " << now - last_ros_sync_ << " sec. Reseting driver...");
-
-    // Restart driver
-    string cmd_kill = "rosnode kill " + camera_node_name_;
-    system(cmd_kill.c_str());
-    ros::WallDuration(5.0).sleep();
-    string cmd_launch = "roslaunch turbot avt_vimba_camera.launch";
-    system(cmd_launch.c_str());
 
     // Publish info
     std_msgs::String msg;
@@ -151,6 +144,18 @@ void Sync::syncCallback(const ros::TimerEvent&)
                boost::lexical_cast<string>(wall_now) + "s.).";
     pub_info_.publish(msg);
 
+    // Restart driver
+    if (ros::ok())
+    {
+      string cmd_kill = "rosnode kill " + camera_node_name_;
+      system(cmd_kill.c_str());
+      ros::WallDuration(5.0).sleep();
+      string cmd_launch = "roslaunch turbot avt_vimba_camera.launch &";
+      system(cmd_launch.c_str());
+      ros::WallDuration(5.0).sleep();
+    }
+
+    init_ = false;
     reset_time_ = now;
     is_resetting_ = true;
   }
