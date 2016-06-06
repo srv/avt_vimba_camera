@@ -105,8 +105,10 @@ void MonoCamera::configure(Config& newconfig, uint32_t level) {
     if (!cam_.isOpened()) {
       cam_.start(ip_, guid_, show_debug_prints_);
     }
+
+    Config config = newconfig;
     cam_.updateConfig(newconfig);
-    updateCameraInfo(newconfig);
+    updateCameraInfo(config);
   } catch (const std::exception& e) {
     ROS_ERROR_STREAM("Error reconfiguring mono_camera node : " << e.what());
   }
