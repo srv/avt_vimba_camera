@@ -89,7 +89,7 @@ void Sync::syncCallback(const ros::TimerEvent&)
   if (now - last_ros_sync_ > max_unsync_time_)
   {
     // No sync!
-    ROS_WARN_STREAM("[SyncNode]: No sync during " << now - last_ros_sync_ << " sec. Reseting driver...");
+    ROS_WARN_STREAM("[SyncNode]: No sync during " << now - last_ros_sync_ << " sec.");
 
     // Publish info
     std_msgs::String msg;

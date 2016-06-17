@@ -127,16 +127,16 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   int binning_or_decimation_y = std::max(config.binning_y, config.decimation_y);
 
   // Set the operational parameters in CameraInfo (binning, ROI)
-  ci.height    = config.height/binning_or_decimation_x;
-  ci.width     = config.width/binning_or_decimation_y;
-  ci.binning_x = 1;
-  ci.binning_y = 1;
+  ci.height    = config.height; 
+  ci.width     = config.width;
+  ci.binning_x = binning_or_decimation_x;
+  ci.binning_y = binning_or_decimation_y;
 
   // ROI in CameraInfo is in unbinned coordinates, need to scale up
-  ci.roi.x_offset = config.roi_offset_x/binning_or_decimation_x;
-  ci.roi.y_offset = config.roi_offset_y/binning_or_decimation_y;
-  ci.roi.height   = config.roi_height/binning_or_decimation_x;
-  ci.roi.width    = config.roi_width/binning_or_decimation_y;
+  ci.roi.x_offset = config.roi_offset_x;
+  ci.roi.y_offset = config.roi_offset_y;
+  ci.roi.height   = config.roi_height;
+  ci.roi.width    = config.roi_width;
 
   // set the new URL and load CameraInfo (if any) from it
   std::string camera_info_url;
