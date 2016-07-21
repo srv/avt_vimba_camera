@@ -33,14 +33,11 @@
 #include <avt_vimba_camera/stereo_camera.h>
 #include <driver_base/SensorLevels.h>
 
-#include <boost/bind.hpp>
-#include <boost/thread/thread.hpp>
-
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 :nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
- desired_freq_(7.5), left_init_(false), right_init_(false) {
+ desired_freq_(7.5), left_init_(false), right_init_(false), timer_(io_, boost::posix_time::seconds(1)) {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -96,7 +93,8 @@ void StereoCamera::run() {
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
 
   // Check timer
-  check_timer_ = nh_.createTimer(ros::Duration(1.0/desired_freq_), &StereoCamera::checkCallback, this);
+  timer_.async_wait( boost::bind(&StereoCamera::checkCallback, this) );
+  io_.run();
 
 }
 
@@ -369,14 +367,17 @@ void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   right_info_man_->setCameraInfo(right_ci);
 }
 
-void StereoCamera::checkCallback(const ros::TimerEvent&) {
+
+void StereoCamera::checkCallback() {
   if (left_init_) {
     double now = ros::Time::now().toSec();
     if (now - l_last_time_ > 10/desired_freq_) {
       ROS_WARN("Left camera not publishing. Reseting...");
       left_init_ = false;
       left_cam_.stop();
+      ROS_INFO("DBGL 1");
       ros::WallDuration(2.0).sleep();
+      ROS_INFO("DBGL 2");
       left_cam_.start(left_ip_, left_guid_, show_debug_prints_);
       ROS_INFO("Left camera reset!");
     }
@@ -387,10 +388,15 @@ void StereoCamera::checkCallback(const ros::TimerEvent&) {
       ROS_WARN("Right camera not publishing. Reseting...");
       right_init_ = false;
       right_cam_.stop();
+      ROS_INFO("DBGR 1");
       ros::WallDuration(2.0).sleep();
+      ROS_INFO("DBGR 2");
       right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
       ROS_INFO("Right camera reset!");
     }
   }
+
+  timer_.expires_at(timer_.expires_at() + boost::posix_time::seconds(1));
+  timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
 }
 };

@@ -33,8 +33,6 @@
 #ifndef FRAME_OBSERVER_H
 #define FRAME_OBSERVER_H
 
-#include <queue>
-#include <boost/thread/mutex.hpp>
 #include <boost/function.hpp>
 
 #include <VimbaCPP/Include/VimbaCPP.h>
@@ -56,17 +54,9 @@ class FrameObserver : virtual public IFrameObserver
     // This is our callback routine that will be executed on every received frame
     virtual void FrameReceived( const FramePtr vimba_frame_ptr );
 
-    // After the view has been notified about a new frame it can pick it up
-    FramePtr GetFrame();
-
-    // Clears the double buffer frame queue
-    void ClearFrameQueue();
-
   private:
     // Frame observer stores all FramePtr
-    std::queue<FramePtr> vimba_frames;
     CameraPtr cam_ptr_;
-    boost::mutex mutex;
     Callback callback_;
 };
 

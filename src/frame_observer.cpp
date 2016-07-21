@@ -43,41 +43,13 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
 
   if ( VmbErrorSuccess == vimba_frame_ptr->GetReceiveStatus( eReceiveStatus ))
   {
-    // Lock the frame queue
-    mutex.lock();
-    // Add frame to queue
-    vimba_frames.push( vimba_frame_ptr );
     // Call the callback
     callback_(vimba_frame_ptr);
-    // Unlock frame queue
-    mutex.unlock();
   }
   else
   {
     // If any error occurred we queue the frame without notification
+    std::cout << "FrameObserver error: " << vimba_frame_ptr->GetReceiveStatus( eReceiveStatus ) << std::endl;
     cam_ptr_->QueueFrame( vimba_frame_ptr );
   }
-}
-
-// Returns the oldest frame that has not been picked up yet
-FramePtr FrameObserver::GetFrame()
-{
-  // Lock the frame queue
-  mutex.lock();
-  // Pop frame from queue
-  FramePtr res = vimba_frames.front();
-  // Unlock frame queue
-  mutex.unlock();
-  return res;
-}
-
-void FrameObserver::ClearFrameQueue()
-{
-  // Lock the frame queue
-  mutex.lock();
-  // Clear the frame queue and release the memory
-  std::queue<FramePtr> empty;
-  std::swap( vimba_frames, empty );
-  // Unlock the frame queue
-  mutex.unlock();
 }

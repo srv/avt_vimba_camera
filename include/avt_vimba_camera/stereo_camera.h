@@ -49,6 +49,11 @@
 #include <diagnostic_updater/diagnostic_updater.h>
 #include <diagnostic_updater/publisher.h>
 
+#include <boost/bind.hpp>
+#include <boost/thread/thread.hpp>
+#include <boost/asio.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include <string>
 
 namespace avt_vimba_camera {
@@ -113,13 +118,17 @@ class StereoCamera {
   double l_last_time_;
   double r_last_time_;
 
+  // Check sync timer
+  boost::asio::io_service io_;
+  boost::asio::deadline_timer timer_;
+
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);
   void configure(StereoConfig& newconfig, uint32_t level);
   void updateCameraInfo(const StereoConfig& config);
   void copyConfig(StereoConfig& sc, Config& lc, Config& rc);
   void sync(void);
-  void checkCallback(const ros::TimerEvent&);
+  void checkCallback();
 };
 }
 #endif
