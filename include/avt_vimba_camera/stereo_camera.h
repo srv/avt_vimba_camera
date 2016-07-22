@@ -114,7 +114,6 @@ class StereoCamera {
   StereoConfig camera_config_;
 
   // Check for errors
-  ros::Timer check_timer_; //!> Timer to check the image errors
   double desired_freq_; //!> Desired image freq
   bool left_init_;
   bool right_init_;
@@ -133,6 +132,7 @@ class StereoCamera {
   boost::asio::io_service io_;
   boost::asio::deadline_timer check_timer_;
   boost::asio::deadline_timer sync_timer_;
+  double sync_timer_step_;
 
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);

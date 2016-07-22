@@ -37,7 +37,7 @@ namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 :nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
- desired_freq_(7.5), left_init_(false), right_init_(false), imgs_buffer_size_(3), max_sec_diff_(0.05), check_timer_(io_, boost::posix_time::seconds(1), sync_timer_(io_, boost::posix_time::seconds(0.03)) {
+ desired_freq_(7.5), left_init_(false), right_init_(false), check_timer_(io_, boost::posix_time::seconds(1)), sync_timer_(io_, boost::posix_time::seconds(0.1)) {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -49,6 +49,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("show_debug_prints", show_debug_prints_, false);
   nhp_.param("r_imgs_buffer_size", imgs_buffer_size_, 3);
   nhp_.param("max_sec_diff", max_sec_diff_, 0.05);
+  nhp_.param("sync_timer_step", sync_timer_step_, 0.1); // Should be less than 1/(frame rate)
 }
 
 StereoCamera::~StereoCamera() {
@@ -185,30 +186,47 @@ void StereoCamera::syncCallback() {
     // Copy vectors to release the lock
     std::vector<sensor_msgs::Image> l_imgs_buffer, r_imgs_buffer;
     {
-      mutex::scoped_lock lock(l_sync_mutex_);
-      mutex::scoped_lock lock(r_sync_mutex_);
+      mutex::scoped_lock l_lock(l_sync_mutex_);
+      mutex::scoped_lock r_lock(r_sync_mutex_);
       l_imgs_buffer = l_imgs_buffer_;
       r_imgs_buffer = r_imgs_buffer_;
     }
 
+    // Check buffers size
+    if (l_imgs_buffer.size() == 0 || r_imgs_buffer.size() == 0) {
+      sync_timer_.expires_at(sync_timer_.expires_at() + boost::posix_time::seconds(sync_timer_step_));
+      sync_timer_.async_wait(boost::bind(&StereoCamera::syncCallback, this));
+      return;
+    }
+
+    // Ge the camera info
     sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
     sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
 
     bool synced = false;
     for (uint i=0; i<l_imgs_buffer.size(); i++) {
-      double l_stamp = l_imgs_buffer[i].header.stamp;
-      for (uint j=0; j<l_imgs_buffer.size(); j++) {
-        double r_stamp = r_imgs_buffer[i].header.stamp;
-        if (fabs(l_stamp - r_stamp) < max_sec_diff_) {
+      double l_stamp = l_imgs_buffer[i].header.stamp.toSec();
 
+      for (uint j=0; j<r_imgs_buffer.size(); j++) {
+        double r_stamp = r_imgs_buffer[j].header.stamp.toSec();
+
+        if (fabs(l_stamp - r_stamp) < max_sec_diff_) {
           // Publish the synced images
-          sensor_msgs::Image l_img = l_imgs_buffer[i];
-          sensor_msgs::Image r_img = r_imgs_buffer[j];
-          r_img.header.stamp = l_img.header.stamp;
-          lci.header.stamp = l_img.header.stamp;
-          rci.header.stamp = r_img.header.stamp;
-          left_pub_.publish(l_img, lci);
-          right_pub_.publish(r_img, rci);
+          r_imgs_buffer[j].header.stamp = l_imgs_buffer[i].header.stamp;
+          lci.header.stamp = l_imgs_buffer[i].header.stamp;
+          rci.header.stamp = l_imgs_buffer[i].header.stamp;
+          left_pub_.publish(l_imgs_buffer[i], lci);
+          right_pub_.publish(r_imgs_buffer[j], rci);
+
+          // Remove the images from the vectors
+          {
+            mutex::scoped_lock l_lock(l_sync_mutex_);
+            l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + i + 1);
+          }
+          {
+            mutex::scoped_lock r_lock(r_sync_mutex_);
+            r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + j + 1);
+          }
 
           synced = true;
           break;
@@ -216,14 +234,10 @@ void StereoCamera::syncCallback() {
       }
       if (synced) break;
     }
-
-    // Log
-    if (!synced)
-      ROS_WARN_STREAM("Impossible to sync left and right images.");
   }
 
-  sync_timer_.expires_at(check_timer_.expires_at() + boost::posix_time::seconds(0.03));
-  sync_timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
+  sync_timer_.expires_at(sync_timer_.expires_at() + boost::posix_time::seconds(sync_timer_step_));
+  sync_timer_.async_wait(boost::bind(&StereoCamera::syncCallback, this));
 }
 
 /** Dynamic reconfigure callback
@@ -471,4 +485,5 @@ void StereoCamera::checkCallback() {
   check_timer_.expires_at(check_timer_.expires_at() + boost::posix_time::seconds(1));
   check_timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
 }
+
 };
