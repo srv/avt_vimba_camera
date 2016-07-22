@@ -123,20 +123,23 @@ class StereoCamera {
 
   // Sync
   std::vector<sensor_msgs::Image> r_imgs_buffer_;
-  int r_imgs_buffer_size_;
-  mutex sync_mutex_;
+  std::vector<sensor_msgs::Image> l_imgs_buffer_;
+  int imgs_buffer_size_;
+  mutex l_sync_mutex_;
+  mutex r_sync_mutex_;
   double max_sec_diff_;
 
   // Check sync timer
   boost::asio::io_service io_;
-  boost::asio::deadline_timer timer_;
+  boost::asio::deadline_timer check_timer_;
+  boost::asio::deadline_timer sync_timer_;
 
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);
+  void syncCallback();
   void configure(StereoConfig& newconfig, uint32_t level);
   void updateCameraInfo(const StereoConfig& config);
   void copyConfig(StereoConfig& sc, Config& lc, Config& rc);
-  void sync(void);
   void checkCallback();
 };
 }

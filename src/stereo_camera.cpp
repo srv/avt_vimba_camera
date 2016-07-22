@@ -37,7 +37,7 @@ namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 :nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
- desired_freq_(7.5), left_init_(false), right_init_(false), r_imgs_buffer_size_(3), max_sec_diff_(0.05), timer_(io_, boost::posix_time::seconds(1)) {
+ desired_freq_(7.5), left_init_(false), right_init_(false), imgs_buffer_size_(3), max_sec_diff_(0.05), check_timer_(io_, boost::posix_time::seconds(1), sync_timer_(io_, boost::posix_time::seconds(0.03)) {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -47,7 +47,7 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
-  nhp_.param("r_imgs_buffer_size", r_imgs_buffer_size_, 3);
+  nhp_.param("r_imgs_buffer_size", imgs_buffer_size_, 3);
   nhp_.param("max_sec_diff", max_sec_diff_, 0.05);
 }
 
@@ -94,8 +94,9 @@ void StereoCamera::run() {
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
 
-  // Check timer
-  timer_.async_wait( boost::bind(&StereoCamera::checkCallback, this) );
+  // Timers
+  sync_timer_.async_wait( boost::bind(&StereoCamera::syncCallback, this) );
+  check_timer_.async_wait( boost::bind(&StereoCamera::checkCallback, this) );
   io_.run();
 
 }
@@ -116,28 +117,12 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
         left_pub_.publish(img, lci);
       }
       else {
-        // Sync and publish
-        mutex::scoped_lock lock(sync_mutex_);
-        double l_sec = ros_time.toSec();
-        bool synced = false;
-        for(uint i=0; i<r_imgs_buffer_.size(); i++) {
-          double r_sec = r_imgs_buffer_[i].header.stamp.toSec();
-          if (fabs(r_sec - l_sec) < max_sec_diff_) {
-            // Frame synced
-            sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
-            sensor_msgs::Image r_img = r_imgs_buffer_[i];
-            rci.header.stamp = ros_time;
-            r_img.header.stamp = ros_time;
-            left_pub_.publish(img, lci);
-            right_pub_.publish(r_img, lci);
-
-            synced = true;
-            break;
-          }
+        // If there is left subscribers, sync and publish
+        mutex::scoped_lock lock(l_sync_mutex_);
+        if (l_imgs_buffer_.size() >= imgs_buffer_size_) {
+          l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + 1);
         }
-        if (!synced) {
-          ROS_WARN("Impossible to sync left and right frames.");
-        }
+        l_imgs_buffer_.push_back(img);
       }
     }
     else {
@@ -174,8 +159,8 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
       }
       else {
         // If there is left subscribers, sync and publish
-        mutex::scoped_lock lock(sync_mutex_);
-        if (r_imgs_buffer_.size() >= r_imgs_buffer_size_) {
+        mutex::scoped_lock lock(r_sync_mutex_);
+        if (r_imgs_buffer_.size() >= imgs_buffer_size_) {
           r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + 1);
         }
         r_imgs_buffer_.push_back(img);
@@ -192,6 +177,53 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
     msg.data = right_cam_.getDeviceTemp();
     pub_right_temp_.publish(msg);
   }
+}
+
+void StereoCamera::syncCallback() {
+  // Sync
+  if(left_pub_.getNumSubscribers() > 0 && right_pub_.getNumSubscribers() > 0) {
+    // Copy vectors to release the lock
+    std::vector<sensor_msgs::Image> l_imgs_buffer, r_imgs_buffer;
+    {
+      mutex::scoped_lock lock(l_sync_mutex_);
+      mutex::scoped_lock lock(r_sync_mutex_);
+      l_imgs_buffer = l_imgs_buffer_;
+      r_imgs_buffer = r_imgs_buffer_;
+    }
+
+    sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+    sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+
+    bool synced = false;
+    for (uint i=0; i<l_imgs_buffer.size(); i++) {
+      double l_stamp = l_imgs_buffer[i].header.stamp;
+      for (uint j=0; j<l_imgs_buffer.size(); j++) {
+        double r_stamp = r_imgs_buffer[i].header.stamp;
+        if (fabs(l_stamp - r_stamp) < max_sec_diff_) {
+
+          // Publish the synced images
+          sensor_msgs::Image l_img = l_imgs_buffer[i];
+          sensor_msgs::Image r_img = r_imgs_buffer[j];
+          r_img.header.stamp = l_img.header.stamp;
+          lci.header.stamp = l_img.header.stamp;
+          rci.header.stamp = r_img.header.stamp;
+          left_pub_.publish(l_img, lci);
+          right_pub_.publish(r_img, rci);
+
+          synced = true;
+          break;
+        }
+      }
+      if (synced) break;
+    }
+
+    // Log
+    if (!synced)
+      ROS_WARN_STREAM("Impossible to sync left and right images.");
+  }
+
+  sync_timer_.expires_at(check_timer_.expires_at() + boost::posix_time::seconds(0.03));
+  sync_timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
 }
 
 /** Dynamic reconfigure callback
@@ -436,7 +468,7 @@ void StereoCamera::checkCallback() {
     }
   }
 
-  timer_.expires_at(timer_.expires_at() + boost::posix_time::seconds(1));
-  timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
+  check_timer_.expires_at(check_timer_.expires_at() + boost::posix_time::seconds(1));
+  check_timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
 }
 };
