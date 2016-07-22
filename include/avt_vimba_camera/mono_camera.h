@@ -37,6 +37,8 @@
 #include <avt_vimba_camera/AvtVimbaCameraConfig.h>
 #include <avt_vimba_camera/avt_vimba_api.h>
 
+#include <camera_calibration_parsers/parse_yml.h>
+
 #include <ros/ros.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -62,6 +64,8 @@ class MonoCamera {
   ros::NodeHandle nh_;
   ros::NodeHandle nhp_;
 
+  bool memory_loaded_;
+
   std::string ip_;
   std::string guid_;
   std::string camera_info_url_;
@@ -70,6 +74,8 @@ class MonoCamera {
   image_transport::ImageTransport it_;
   // ROS Camera publisher
   image_transport::CameraPublisher pub_;
+  // Set camera_info service server
+  ros::ServiceServer set_camera_info_srv_;
 
 
 
@@ -80,6 +86,8 @@ class MonoCamera {
   typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
   typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
   ReconfigureServer reconfigure_server_;
+
+  bool setCameraInfo(sensor_msgs::SetCameraInfo::Request& req, sensor_msgs::SetCameraInfo::Response& rsp);
 
   // Camera configuration
   Config camera_config_;
