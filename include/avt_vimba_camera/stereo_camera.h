@@ -55,6 +55,9 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 
 #include <string>
+#include <boost/thread/mutex.hpp>
+
+using namespace boost;
 
 namespace avt_vimba_camera {
 class StereoCamera {
@@ -117,6 +120,12 @@ class StereoCamera {
   bool right_init_;
   double l_last_time_;
   double r_last_time_;
+
+  // Sync
+  std::vector<sensor_msgs::Image> r_imgs_buffer_;
+  int r_imgs_buffer_size_;
+  mutex sync_mutex_;
+  double max_sec_diff_;
 
   // Check sync timer
   boost::asio::io_service io_;

@@ -37,7 +37,7 @@ namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 :nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
- desired_freq_(7.5), left_init_(false), right_init_(false), timer_(io_, boost::posix_time::seconds(1)) {
+ desired_freq_(7.5), left_init_(false), right_init_(false), r_imgs_buffer_size_(3), max_sec_diff_(0.05), timer_(io_, boost::posix_time::seconds(1)) {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -47,6 +47,8 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
+  nhp_.param("r_imgs_buffer_size", r_imgs_buffer_size_, 3);
+  nhp_.param("max_sec_diff", max_sec_diff_, 0.05);
 }
 
 StereoCamera::~StereoCamera() {
@@ -110,7 +112,33 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
       lci.header.stamp = ros_time;
       img.header.stamp = ros_time;
       img.header.frame_id = lci.header.frame_id;
-      left_pub_.publish(img, lci);
+      if (right_pub_.getNumSubscribers() == 0) {
+        left_pub_.publish(img, lci);
+      }
+      else {
+        // Sync and publish
+        mutex::scoped_lock lock(sync_mutex_);
+        double l_sec = ros_time.toSec();
+        bool synced = false;
+        for(uint i=0; i<r_imgs_buffer_.size(); i++) {
+          double r_sec = r_imgs_buffer_[i].header.stamp.toSec();
+          if (fabs(r_sec - l_sec) < max_sec_diff_) {
+            // Frame synced
+            sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+            sensor_msgs::Image r_img = r_imgs_buffer_[i];
+            rci.header.stamp = ros_time;
+            r_img.header.stamp = ros_time;
+            left_pub_.publish(img, lci);
+            right_pub_.publish(r_img, lci);
+
+            synced = true;
+            break;
+          }
+        }
+        if (!synced) {
+          ROS_WARN("Impossible to sync left and right frames.");
+        }
+      }
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
@@ -139,7 +167,19 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
       rci.header.stamp = ros_time;
       img.header.stamp = ros_time;
       img.header.frame_id = rci.header.frame_id;
-      right_pub_.publish(img, rci);
+
+      // If no left subscribers, publish it
+      if (left_pub_.getNumSubscribers() == 0) {
+        right_pub_.publish(img, rci);
+      }
+      else {
+        // If there is left subscribers, sync and publish
+        mutex::scoped_lock lock(sync_mutex_);
+        if (r_imgs_buffer_.size() >= r_imgs_buffer_size_) {
+          r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + 1);
+        }
+        r_imgs_buffer_.push_back(img);
+      }
     }
     else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
