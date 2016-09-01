@@ -5,7 +5,6 @@ find_package(catkin REQUIRED COMPONENTS
   #libvimba
   camera_info_manager
   diagnostic_updater
-  driver_base
   dynamic_reconfigure
   image_geometry
   image_transport
@@ -29,7 +28,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS camera_info_manager diagnostic_updater driver_base dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera
+  CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera
 )
 
 ###########

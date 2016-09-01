@@ -31,7 +31,6 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/stereo_camera.h>
-#include <driver_base/SensorLevels.h>
 
 namespace avt_vimba_camera {
 

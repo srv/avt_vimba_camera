@@ -39,7 +39,7 @@
 #include <avt_vimba_camera/frame_observer.h>
 
 #include <ros/ros.h>
-#include <driver_base/SensorLevels.h>
+#include <dynamic_reconfigure/SensorLevels.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/SetCameraInfo.h>
@@ -124,7 +124,7 @@ class VimbaROS {
     int trigger_source_int_;
 
     // ROS messages
-    typedef driver_base::SensorLevels Levels;
+    typedef dynamic_reconfigure::SensorLevels Levels;
     sensor_msgs::CameraInfo cam_info_;
     boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
 
