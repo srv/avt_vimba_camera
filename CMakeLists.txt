@@ -127,4 +127,11 @@ elseif("${ARCH}" STREQUAL x86_64)
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/64bit/libVimbaCPP.so
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
+elseif("${ARCH}" STREQUAL armv7)
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaCPP.so
+    DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  )
 endif()
+
