@@ -171,6 +171,7 @@ class AvtVimbaCamera {
   void updatePixelFormatConfig(Config& config);
   void updatePtpModeConfig(Config& config);
   void updateGPIOConfig(Config& config);
+  void updateIrisConfig(Config& config);
 
   void getCurrentState(diagnostic_updater::DiagnosticStatusWrapper &stat);
 
