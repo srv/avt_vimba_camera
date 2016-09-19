@@ -170,7 +170,7 @@ class VimbaROS {
     void updatePixelFormatConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updateGPIOConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
     void updatePtpModeConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
-
+    void updateIrisConfig(const Config& config, FeaturePtrVector feature_ptr_vec);
 
     void start(Config& config);
     void stop();

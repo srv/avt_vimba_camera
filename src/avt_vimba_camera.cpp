@@ -246,6 +246,7 @@ void AvtVimbaCamera::updateConfig(Config& config) {
   updatePtpModeConfig(config);
   updatePixelFormatConfig(config);
   updateAcquisitionConfig(config);
+  updateIrisConfig(config);
   config_ = config;
 
   if (on_init_) {
@@ -797,6 +798,43 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
       << "\n\tTriggerDelayAbs         : " << config.trigger_delay      << " was " << config_.trigger_delay);
   }
 }
+
+/* Update the Iris config */
+void AvtVimbaCamera::updateIrisConfig(Config& config) {
+  bool changed = false;
+  if (config.iris_auto_target != config_.iris_auto_target || on_init_) {
+    changed = true;
+    setFeatureValue("IrisAutoTarget", static_cast<float>(config.iris_auto_target));
+  }
+  if (config.iris_mode != config_.iris_mode || on_init_) {
+    changed = true;
+    setFeatureValue("IrisMode", config.iris_mode.c_str());
+  }
+//  if (config.iris_video_level != config_.iris_video_level || on_init_) {
+//    changed = true;
+//    setFeatureValue("IrisVideoLevel",
+//                    static_cast<VmbInt64_t>(config.iris_video_level));
+//  }
+  if (config.iris_video_level_max != config_.iris_video_level_max || on_init_) {
+    changed = true;
+    setFeatureValue("IrisVideoLevelMax", static_cast<float>(config.iris_video_level_max));
+  }
+  if (config.iris_video_level_min != config_.iris_video_level_min || on_init_) {
+    changed = true;
+    setFeatureValue("IrisVideoLevelMin",
+                    static_cast<VmbInt64_t>(config.iris_video_level_min));
+  }
+  if(changed && show_debug_prints_){
+    ROS_INFO_STREAM("New Iris config (" << config.frame_id << ") : "
+      << "\n\tIrisAutoTarget    : " << config.iris_auto_target          << " was " << config_.iris_auto_target
+//      << "\n\tIrisMode          : " << config.iris_mode               << " was " << config_.iris_mode
+//      << "\n\tIrisVideoLevel    : " << config.iris_video_level        << " was " << config_.iris_video_level
+//      << "\n\tIrisVideoLevelMax : " << config.iris_video_level_max      << " was " << config_.iris_video_level_max
+//      << "\n\tIrisVideoLevelMin : " << config.iris_video_level_min      << " was " << config_.iris_video_level_min
+);
+  }
+}
+
 
 /** Change the Exposure configuration */
 void AvtVimbaCamera::updateExposureConfig(Config& config) {
