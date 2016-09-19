@@ -122,9 +122,6 @@ class AvtVimbaCamera {
   // Mutex
   boost::mutex config_mutex_;
 
-  // Thread
-  boost::thread thread_callback_;
-
   bool opened_;
   bool streaming_;
   bool on_init_;
