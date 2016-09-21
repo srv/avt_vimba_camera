@@ -458,26 +458,30 @@ void StereoCamera::checkCallback() {
     double now = ros::Time::now().toSec();
     if (now - l_last_time_ > 10/desired_freq_) {
       ROS_WARN("Left camera not publishing. Reseting...");
-      left_init_ = false;
+      left_cam_.stopImaging();
+      ROS_WARN("DBGL 1");
       left_cam_.stop();
-      ROS_INFO("DBGL 1");
+      ROS_WARN("DBGL 2");
       ros::WallDuration(2.0).sleep();
-      ROS_INFO("DBGL 2");
+      ROS_WARN("DBGL 3");
       left_cam_.start(left_ip_, left_guid_, show_debug_prints_);
       ROS_INFO("Left camera reset!");
+      left_init_ = false;
     }
   }
   if (right_init_) {
     double now = ros::Time::now().toSec();
     if (now - r_last_time_ > 10/desired_freq_) {
       ROS_WARN("Right camera not publishing. Reseting...");
-      right_init_ = false;
+      right_cam_.stopImaging();
+      ROS_WARN("DBGR 1");
       right_cam_.stop();
-      ROS_INFO("DBGR 1");
+      ROS_WARN("DBGR 2");
       ros::WallDuration(2.0).sleep();
-      ROS_INFO("DBGR 2");
+      ROS_WARN("DBGR 3");
       right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
       ROS_INFO("Right camera reset!");
+      right_init_ = false;
     }
   }
 
