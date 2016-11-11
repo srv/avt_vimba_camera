@@ -113,13 +113,6 @@ class StereoCamera {
   // Camera configuration
   StereoConfig camera_config_;
 
-  // Check for errors
-  double desired_freq_; //!> Desired image freq
-  bool left_init_;
-  bool right_init_;
-  double l_last_time_;
-  double r_last_time_;
-
   // Sync
   std::vector<sensor_msgs::Image> r_imgs_buffer_;
   std::vector<sensor_msgs::Image> l_imgs_buffer_;
@@ -127,12 +120,6 @@ class StereoCamera {
   mutex l_sync_mutex_;
   mutex r_sync_mutex_;
   double max_sec_diff_;
-
-  // Check sync timer
-  boost::asio::io_service io_;
-  boost::asio::deadline_timer check_timer_;
-  boost::asio::deadline_timer sync_timer_;
-  double sync_timer_step_;
 
   void leftFrameCallback(const FramePtr& vimba_frame_ptr);
   void rightFrameCallback(const FramePtr& vimba_frame_ptr);

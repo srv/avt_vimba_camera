@@ -35,8 +35,7 @@
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
-:nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right"),
- desired_freq_(7.5), left_init_(false), right_init_(false), check_timer_(io_, boost::posix_time::seconds(1)), sync_timer_(io_, boost::posix_time::seconds(0.1)) {
+: nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right") {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -46,9 +45,8 @@ StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
   nhp_.param("left_camera_info_url", left_camera_info_url_, std::string(""));
   nhp_.param("right_camera_info_url", right_camera_info_url_, std::string(""));
   nhp_.param("show_debug_prints", show_debug_prints_, false);
-  nhp_.param("r_imgs_buffer_size", imgs_buffer_size_, 3);
+  nhp_.param("imgs_buffer_size", imgs_buffer_size_, 2);
   nhp_.param("max_sec_diff", max_sec_diff_, 0.05);
-  nhp_.param("sync_timer_step", sync_timer_step_, 0.1); // Should be less than 1/(frame rate)
 }
 
 StereoCamera::~StereoCamera() {
@@ -94,17 +92,10 @@ void StereoCamera::run() {
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
 
-  // Timers
-  sync_timer_.async_wait( boost::bind(&StereoCamera::syncCallback, this) );
-  check_timer_.async_wait( boost::bind(&StereoCamera::checkCallback, this) );
-  io_.run();
-
 }
 
 void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
-  left_init_ = true;
   ros::Time ros_time = ros::Time::now();
-  l_last_time_ = ros_time.toSec();
   if(left_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
@@ -117,12 +108,42 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
         left_pub_.publish(img, lci);
       }
       else {
-        // If there is left subscribers, sync and publish
-        mutex::scoped_lock lock(l_sync_mutex_);
-        if (l_imgs_buffer_.size() >= imgs_buffer_size_) {
-          l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + 1);
+        // Lock right image buffer
+        mutex::scoped_lock r_lock(r_sync_mutex_);
+
+        // Search a time coincidence with right
+        int idx_r = -1;
+        for (uint i=0; i<r_imgs_buffer_.size(); i++) {
+          double r_stamp = r_imgs_buffer_[i].header.stamp.toSec();
+          if (fabs(r_stamp - ros_time.toSec()) < max_sec_diff_) {
+            idx_r = (int)i;
+            break;
+          }
         }
-        l_imgs_buffer_.push_back(img);
+
+        if (idx_r >= 0) {
+          // Get the corresponding right image
+          sensor_msgs::Image r_img = r_imgs_buffer_[idx_r];
+
+          // Publish
+          sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
+          r_img.header.stamp = ros_time;
+          lci.header.stamp = ros_time;
+          rci.header.stamp = ros_time;
+          left_pub_.publish(img, lci);
+          right_pub_.publish(r_img, rci);
+
+          // Delete this right image from buffer
+          r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + idx_r + 1);
+        }
+        else {
+          // Add the left image to the buffer
+          mutex::scoped_lock lock(l_sync_mutex_);
+          if (l_imgs_buffer_.size() >= imgs_buffer_size_) {
+            l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + 1);
+          }
+          l_imgs_buffer_.push_back(img);
+        }
       }
     }
     else {
@@ -141,9 +162,7 @@ void StereoCamera::leftFrameCallback(const FramePtr& vimba_frame_ptr) {
 }
 
 void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
-  right_init_ = true;
   ros::Time ros_time = ros::Time::now();
-  r_last_time_ = ros_time.toSec();
   if(right_pub_.getNumSubscribers() > 0){
     sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)){
@@ -158,12 +177,42 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
         right_pub_.publish(img, rci);
       }
       else {
-        // If there is left subscribers, sync and publish
-        mutex::scoped_lock lock(r_sync_mutex_);
-        if (r_imgs_buffer_.size() >= imgs_buffer_size_) {
-          r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + 1);
+        // Lock left image buffer
+        mutex::scoped_lock l_lock(l_sync_mutex_);
+
+        // Search a time coincidence with left
+        int idx_l = -1;
+        for (uint i=0; i<l_imgs_buffer_.size(); i++) {
+          double l_stamp = l_imgs_buffer_[i].header.stamp.toSec();
+          if (fabs(l_stamp - ros_time.toSec()) < max_sec_diff_) {
+            idx_l = (int)i;
+            break;
+          }
         }
-        r_imgs_buffer_.push_back(img);
+
+        if (idx_l >= 0) {
+          // Get the corresponding left image
+          sensor_msgs::Image l_img = l_imgs_buffer_[idx_l];
+
+          // Publish
+          sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
+          l_img.header.stamp = ros_time;
+          lci.header.stamp = ros_time;
+          rci.header.stamp = ros_time;
+          left_pub_.publish(l_img, lci);
+          right_pub_.publish(img, rci);
+
+          // Delete this left image from buffer
+          l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + idx_l + 1);
+        }
+        else {
+          // Add the right image to the buffer
+          mutex::scoped_lock lock(r_sync_mutex_);
+          if (r_imgs_buffer_.size() >= imgs_buffer_size_) {
+            r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + 1);
+          }
+          r_imgs_buffer_.push_back(img);
+        }
       }
     }
     else {
@@ -177,66 +226,6 @@ void StereoCamera::rightFrameCallback(const FramePtr& vimba_frame_ptr) {
     msg.data = right_cam_.getDeviceTemp();
     pub_right_temp_.publish(msg);
   }
-}
-
-void StereoCamera::syncCallback() {
-  // Sync
-  if(left_pub_.getNumSubscribers() > 0 && right_pub_.getNumSubscribers() > 0) {
-    // Copy vectors to release the lock
-    std::vector<sensor_msgs::Image> l_imgs_buffer, r_imgs_buffer;
-    {
-      mutex::scoped_lock l_lock(l_sync_mutex_);
-      mutex::scoped_lock r_lock(r_sync_mutex_);
-      l_imgs_buffer = l_imgs_buffer_;
-      r_imgs_buffer = r_imgs_buffer_;
-    }
-
-    // Check buffers size
-    if (l_imgs_buffer.size() == 0 || r_imgs_buffer.size() == 0) {
-      sync_timer_.expires_at(sync_timer_.expires_at() + boost::posix_time::seconds(sync_timer_step_));
-      sync_timer_.async_wait(boost::bind(&StereoCamera::syncCallback, this));
-      return;
-    }
-
-    // Ge the camera info
-    sensor_msgs::CameraInfo lci = left_info_man_->getCameraInfo();
-    sensor_msgs::CameraInfo rci = right_info_man_->getCameraInfo();
-
-    bool synced = false;
-    for (uint i=0; i<l_imgs_buffer.size(); i++) {
-      double l_stamp = l_imgs_buffer[i].header.stamp.toSec();
-
-      for (uint j=0; j<r_imgs_buffer.size(); j++) {
-        double r_stamp = r_imgs_buffer[j].header.stamp.toSec();
-
-        if (fabs(l_stamp - r_stamp) < max_sec_diff_) {
-          // Publish the synced images
-          r_imgs_buffer[j].header.stamp = l_imgs_buffer[i].header.stamp;
-          lci.header.stamp = l_imgs_buffer[i].header.stamp;
-          rci.header.stamp = l_imgs_buffer[i].header.stamp;
-          left_pub_.publish(l_imgs_buffer[i], lci);
-          right_pub_.publish(r_imgs_buffer[j], rci);
-
-          // Remove the images from the vectors
-          {
-            mutex::scoped_lock l_lock(l_sync_mutex_);
-            l_imgs_buffer_.erase(l_imgs_buffer_.begin(), l_imgs_buffer_.begin() + i + 1);
-          }
-          {
-            mutex::scoped_lock r_lock(r_sync_mutex_);
-            r_imgs_buffer_.erase(r_imgs_buffer_.begin(), r_imgs_buffer_.begin() + j + 1);
-          }
-
-          synced = true;
-          break;
-        }
-      }
-      if (synced) break;
-    }
-  }
-
-  sync_timer_.expires_at(sync_timer_.expires_at() + boost::posix_time::seconds(sync_timer_step_));
-  sync_timer_.async_wait(boost::bind(&StereoCamera::syncCallback, this));
 }
 
 /** Dynamic reconfigure callback
@@ -450,43 +439,6 @@ void StereoCamera::updateCameraInfo(const StereoConfig& config) {
   // push the changes to manager
   left_info_man_->setCameraInfo(left_ci);
   right_info_man_->setCameraInfo(right_ci);
-}
-
-
-void StereoCamera::checkCallback() {
-  if (left_init_) {
-    double now = ros::Time::now().toSec();
-    if (now - l_last_time_ > 10/desired_freq_) {
-      ROS_WARN("Left camera not publishing. Reseting...");
-      left_cam_.stopImaging();
-      ROS_WARN("DBGL 1");
-      left_cam_.stop();
-      ROS_WARN("DBGL 2");
-      ros::WallDuration(2.0).sleep();
-      ROS_WARN("DBGL 3");
-      left_cam_.start(left_ip_, left_guid_, show_debug_prints_);
-      ROS_INFO("Left camera reset!");
-      left_init_ = false;
-    }
-  }
-  if (right_init_) {
-    double now = ros::Time::now().toSec();
-    if (now - r_last_time_ > 10/desired_freq_) {
-      ROS_WARN("Right camera not publishing. Reseting...");
-      right_cam_.stopImaging();
-      ROS_WARN("DBGR 1");
-      right_cam_.stop();
-      ROS_WARN("DBGR 2");
-      ros::WallDuration(2.0).sleep();
-      ROS_WARN("DBGR 3");
-      right_cam_.start(right_ip_, right_guid_, show_debug_prints_);
-      ROS_INFO("Right camera reset!");
-      right_init_ = false;
-    }
-  }
-
-  check_timer_.expires_at(check_timer_.expires_at() + boost::posix_time::seconds(1));
-  check_timer_.async_wait(boost::bind(&StereoCamera::checkCallback, this));
 }
 
 };
