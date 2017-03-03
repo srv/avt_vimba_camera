@@ -324,8 +324,6 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   boost::thread thread_callback = boost::thread(userFrameCallback, vimba_frame_ptr);
   thread_callback.join();
 
-  // Queue the frame so that we can receive a new one.
-  vimba_camera_ptr_->QueueFrame(vimba_frame_ptr);
   updater_.update();
 }
 
