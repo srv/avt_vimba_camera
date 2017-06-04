@@ -270,8 +270,27 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
   //            or a plain serial number: "1234567890".
 
   CameraPtr camera;
+  VmbErrorType err;
   VimbaSystem& vimba_system(VimbaSystem::GetInstance());
-  VmbErrorType err = vimba_system.GetCameraByID(id_str.c_str(), camera);
+  
+  while( ros::ok() ) {
+    err = vimba_system.GetCameraByID(id_str.c_str(), camera); 
+    if (VmbErrorSuccess == err) { 
+      ROS_INFO_STREAM("Camera: " << name_ << " found by ID: " << id_str);
+      break; 
+    }
+    else {
+      ROS_WARN_STREAM("Could not find camera: " << name_ << " by ID: " 
+                      << id_str << ", trying again");
+      // Vimba system must be shutdown and started back up before it
+      // recognizes a newly plugged in camera.
+      vimba_system.Shutdown();
+      ros::Duration(1.0).sleep();
+      vimba_system.Startup();
+    }
+  };
+  
+  
   if (VmbErrorSuccess == err) {
     std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
     VmbInterfaceType cam_int_type;
@@ -302,7 +321,7 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
       camera_state_ = IDLE;
     } else {
       ROS_ERROR_STREAM("[" << name_
-        << "]: Could not get camera " << id_str
+        << "]: Could not open camera " << id_str
         << "\n Error: " << api_.errorCodeToMessage(err));
       camera_state_ = CAMERA_NOT_FOUND;
     }
