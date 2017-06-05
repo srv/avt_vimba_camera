@@ -36,6 +36,8 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
+#include <signal.h>
+
 namespace avt_vimba_camera {
 
 static const char* AutoMode[] = {
@@ -84,6 +86,12 @@ static const char* State[] = {
   "Ok"};
 
 
+static volatile int keepRunning = 1;
+
+void intHandler(int dummy) {
+    keepRunning = 0;
+}
+
 AvtVimbaCamera::AvtVimbaCamera() : AvtVimbaCamera(ros::this_node::getName().c_str()) {
 
 }
@@ -95,6 +103,8 @@ AvtVimbaCamera::AvtVimbaCamera(std::string name) {
   on_init_ = true;   // on initialization phase
   show_debug_prints_ = false;
   name_ = name;
+
+  signal(SIGINT, intHandler);
 
   camera_state_ = OPENING;
 
@@ -114,12 +124,20 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
     diagnostic_msg_ = "Trying to open camera by IP: " + ip_str;
     ROS_INFO_STREAM("Trying to open camera by IP: " << ip_str);
     vimba_camera_ptr_ = openCamera(ip_str);
+    if (!vimba_camera_ptr_) {
+      ROS_WARN("Camera pointer is empty. Returning...");
+      return;
+    }
     updater_.setHardwareID(ip_str);
     guid_ = ip_str;
     // If both guid and IP are available, open by IP and check guid
     if (!guid_str.empty()) {
       std::string cam_guid_str;
       vimba_camera_ptr_->GetSerialNumber(cam_guid_str);
+      if (!vimba_camera_ptr_) {
+        ROS_WARN("Camera pointer is empty. Returning...");
+        return;
+      }
       assert(cam_guid_str == guid_str);
       updater_.setHardwareID(guid_str);
       guid_ = guid_str;
@@ -272,37 +290,49 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
   CameraPtr camera;
   VimbaSystem& vimba_system(VimbaSystem::GetInstance());
   VmbErrorType err = vimba_system.GetCameraByID(id_str.c_str(), camera);
+
+  while (err != VmbErrorSuccess && keepRunning) {
+    ROS_WARN_STREAM("Could not get camera. Retrying every second...");
+    err = vimba_system.GetCameraByID(id_str.c_str(), camera);
+    ros::Duration(1.0).sleep();
+  }
+
   if (VmbErrorSuccess == err) {
-    std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
-    VmbInterfaceType cam_int_type;
-    VmbAccessModeType accessMode;  // = VmbAccessModeNone;
-    camera->GetID(cam_id);
-    camera->GetName(cam_name);
-    camera->GetModel(cam_model);
-    camera->GetSerialNumber(cam_sn);
-    camera->GetInterfaceID(cam_int_id);
-    camera->GetInterfaceType(cam_int_type);
-    err = camera->GetPermittedAccess(accessMode);
-
-    if(show_debug_prints_) {
-      ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
-      << "\n\t\t * Name     : " << cam_name
-      << "\n\t\t * Model    : " << cam_model
-      << "\n\t\t * ID       : " << cam_id
-      << "\n\t\t * S/N      : " << cam_sn
-      << "\n\t\t * Itf. ID  : " << cam_int_id
-      << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
-      << "\n\t\t * Access   : " << accessModeToString(accessMode));
+    while (err != VmbErrorSuccess && keepRunning) {
+      ROS_WARN_STREAM("Could not open camera. Retrying every second...");
+      err = camera->Open(VmbAccessModeFull);
+      ros::Duration(1.0).sleep();
     }
-
-    err = camera->Open(VmbAccessModeFull);
     if (VmbErrorSuccess == err) {
+      std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
+      VmbInterfaceType cam_int_type;
+      VmbAccessModeType accessMode;  // = VmbAccessModeNone;
+      camera->GetID(cam_id);
+      camera->GetName(cam_name);
+      camera->GetModel(cam_model);
+      camera->GetSerialNumber(cam_sn);
+      camera->GetInterfaceID(cam_int_id);
+      camera->GetInterfaceType(cam_int_type);
+      err = camera->GetPermittedAccess(accessMode);
+
+      if(show_debug_prints_) {
+        ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
+        << "\n\t\t * Name     : " << cam_name
+        << "\n\t\t * Model    : " << cam_model
+        << "\n\t\t * ID       : " << cam_id
+        << "\n\t\t * S/N      : " << cam_sn
+        << "\n\t\t * Itf. ID  : " << cam_int_id
+        << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
+        << "\n\t\t * Access   : " << accessModeToString(accessMode));
+      }
+
+
       //printAllCameraFeatures(camera);
       opened_ = true;
       camera_state_ = IDLE;
     } else {
       ROS_ERROR_STREAM("[" << name_
-        << "]: Could not get camera " << id_str
+        << "]: Could not open camera " << id_str
         << "\n Error: " << api_.errorCodeToMessage(err));
       camera_state_ = CAMERA_NOT_FOUND;
     }
