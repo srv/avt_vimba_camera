@@ -294,14 +294,14 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
   while (err != VmbErrorSuccess && keepRunning) {
     ROS_WARN_STREAM("Could not get camera. Retrying every second...");
     err = vimba_system.GetCameraByID(id_str.c_str(), camera);
-    ros::Duration(1.0).sleep();
+    ros::Duration(2.0).sleep();
   }
 
   if (VmbErrorSuccess == err) {
     while (err != VmbErrorSuccess && keepRunning) {
       ROS_WARN_STREAM("Could not open camera. Retrying every second...");
       err = camera->Open(VmbAccessModeFull);
-      ros::Duration(1.0).sleep();
+      ros::Duration(2.0).sleep();
     }
     if (VmbErrorSuccess == err) {
       std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
@@ -326,8 +326,9 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
         << "\n\t\t * Access   : " << accessModeToString(accessMode));
       }
 
+      ros::Duration(2.0).sleep();
 
-      //printAllCameraFeatures(camera);
+      printAllCameraFeatures(camera);
       opened_ = true;
       camera_state_ = IDLE;
     } else {
@@ -636,7 +637,7 @@ int AvtVimbaCamera::getTriggerModeInt(std::string mode_str) {
   return mode;
 }
 
-void AvtVimbaCamera::printAllCameraFeatures(CameraPtr camera) {
+void AvtVimbaCamera::printAllCameraFeatures(const CameraPtr& camera) {
   VmbErrorType err;
   FeaturePtrVector features;
 
@@ -771,7 +772,7 @@ void AvtVimbaCamera::printAllCameraFeatures(CameraPtr camera) {
       std::cout << std::endl;
     }
   } else {
-    std::cout << "Could not get features. Error code: " << err << std::endl;
+    std::cout << "Could not get features. Error code: " << api_.errorCodeToMessage(err) << std::endl;
   }
 }
 

@@ -156,7 +156,7 @@ class AvtVimbaCamera {
   std::string interfaceToString(VmbInterfaceType interfaceType);
   std::string accessModeToString(VmbAccessModeType modeType);
   int getTriggerModeInt(std::string mode_str);
-  void printAllCameraFeatures(CameraPtr camera);
+  void printAllCameraFeatures(const CameraPtr& camera);
 
   void updateAcquisitionConfig(Config& config);
   void updateExposureConfig(Config& config);
