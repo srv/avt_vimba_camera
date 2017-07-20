@@ -298,6 +298,7 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
   }
 
   if (VmbErrorSuccess == err) {
+    err = camera->Open(VmbAccessModeFull);
     while (err != VmbErrorSuccess && keepRunning) {
       ROS_WARN_STREAM("Could not open camera. Retrying every second...");
       err = camera->Open(VmbAccessModeFull);
