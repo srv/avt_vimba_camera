@@ -289,61 +289,66 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
 
   CameraPtr camera;
   VimbaSystem& vimba_system(VimbaSystem::GetInstance());
-  VmbErrorType err = vimba_system.GetCameraByID(id_str.c_str(), camera);
 
-  while (err != VmbErrorSuccess && keepRunning) {
-    ROS_WARN_STREAM("Could not get camera. Retrying every second...");
-    err = vimba_system.GetCameraByID(id_str.c_str(), camera);
-    ros::Duration(2.0).sleep();
+  // get camera
+  VmbErrorType err = vimba_system.GetCameraByID(id_str.c_str(), camera);
+  while (err != VmbErrorSuccess) {
+    if (keepRunning) {
+      ROS_WARN_STREAM("Could not get camera. Retrying every two seconds...");
+      err = vimba_system.GetCameraByID(id_str.c_str(), camera);
+      ros::Duration(2.0).sleep();
+    } else {
+      ROS_ERROR_STREAM("[" << name_
+        << "]: Could not get camera " << id_str
+        << "\n Error: " << api_.errorCodeToMessage(err));
+      camera_state_ = CAMERA_NOT_FOUND;
+      return camera;
+    }
   }
 
-  if (VmbErrorSuccess == err) {
-    err = camera->Open(VmbAccessModeFull);
-    while (err != VmbErrorSuccess && keepRunning) {
-      ROS_WARN_STREAM("Could not open camera. Retrying every second...");
+  // open camera
+  err = camera->Open(VmbAccessModeFull);
+  while (err != VmbErrorSuccess && keepRunning) {
+    if (keepRunning) {
+      ROS_WARN_STREAM("Could not open camera. Retrying every two seconds...");
       err = camera->Open(VmbAccessModeFull);
       ros::Duration(2.0).sleep();
-    }
-    if (VmbErrorSuccess == err) {
-      std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
-      VmbInterfaceType cam_int_type;
-      VmbAccessModeType accessMode;  // = VmbAccessModeNone;
-      camera->GetID(cam_id);
-      camera->GetName(cam_name);
-      camera->GetModel(cam_model);
-      camera->GetSerialNumber(cam_sn);
-      camera->GetInterfaceID(cam_int_id);
-      camera->GetInterfaceType(cam_int_type);
-      err = camera->GetPermittedAccess(accessMode);
-
-      if(show_debug_prints_) {
-        ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
-        << "\n\t\t * Name     : " << cam_name
-        << "\n\t\t * Model    : " << cam_model
-        << "\n\t\t * ID       : " << cam_id
-        << "\n\t\t * S/N      : " << cam_sn
-        << "\n\t\t * Itf. ID  : " << cam_int_id
-        << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
-        << "\n\t\t * Access   : " << accessModeToString(accessMode));
-      }
-
-      ros::Duration(2.0).sleep();
-
-      printAllCameraFeatures(camera);
-      opened_ = true;
-      camera_state_ = IDLE;
     } else {
       ROS_ERROR_STREAM("[" << name_
         << "]: Could not open camera " << id_str
         << "\n Error: " << api_.errorCodeToMessage(err));
       camera_state_ = CAMERA_NOT_FOUND;
+      return camera;
     }
-  } else {
-    ROS_ERROR_STREAM("[" << name_
-      << "]: Could not get camera " << id_str
-      << "\n Error: " << api_.errorCodeToMessage(err));
-    camera_state_ = CAMERA_NOT_FOUND;
   }
+
+  std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
+  VmbInterfaceType cam_int_type;
+  VmbAccessModeType accessMode;  // = VmbAccessModeNone;
+  camera->GetID(cam_id);
+  camera->GetName(cam_name);
+  camera->GetModel(cam_model);
+  camera->GetSerialNumber(cam_sn);
+  camera->GetInterfaceID(cam_int_id);
+  camera->GetInterfaceType(cam_int_type);
+  err = camera->GetPermittedAccess(accessMode);
+
+  if(show_debug_prints_) {
+    ROS_INFO_STREAM("[" << name_ << "]: Opened camera with"
+    << "\n\t\t * Name     : " << cam_name
+    << "\n\t\t * Model    : " << cam_model
+    << "\n\t\t * ID       : " << cam_id
+    << "\n\t\t * S/N      : " << cam_sn
+    << "\n\t\t * Itf. ID  : " << cam_int_id
+    << "\n\t\t * Itf. Type: " << interfaceToString(cam_int_type)
+    << "\n\t\t * Access   : " << accessModeToString(accessMode));
+  }
+
+  ros::Duration(2.0).sleep();
+
+  printAllCameraFeatures(camera);
+  opened_ = true;
+  camera_state_ = IDLE;
   return camera;
 }
 
