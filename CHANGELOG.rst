@@ -2,8 +2,8 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.10 (2017-08-16)
+-------------------
 * Merge pull request `#26 <https://github.com/srv/avt_vimba_camera/issues/26>`_ from 130s/k/add_ci
   [CI] Add config for ROS Kinetic (and Lunar as an option).
 * [CI] Add config for ROS Kinetic (and Lunar as an option).
