@@ -109,7 +109,7 @@ class AvtVimbaCamera {
 
   AvtVimbaApi api_;
   // IFrame Observer
-  FrameObserver* vimba_frame_observer_ptr_;
+  SP_DECL(FrameObserver) frame_obs_ptr_;
   // The currently streaming camera
   CameraPtr vimba_camera_ptr_;
   // Current frame

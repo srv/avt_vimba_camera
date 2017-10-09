@@ -175,8 +175,8 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
       trigger_source_int == FixedRate ||
       trigger_source_int == SyncIn1) {
     // Create a frame observer for this camera
-    vimba_frame_observer_ptr_ = new FrameObserver(vimba_camera_ptr_,
-      boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1));
+    SP_SET(frame_obs_ptr_, new FrameObserver(vimba_camera_ptr_,
+      boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1)));
     camera_state_ = IDLE;
   } else {
     diagnostic_msg_ = "Trigger mode " +
@@ -195,7 +195,7 @@ void AvtVimbaCamera::startImaging(void) {
     // Start streaming
     VmbErrorType err =
       vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
-      IFrameObserverPtr(vimba_frame_observer_ptr_));
+      IFrameObserverPtr(frame_obs_ptr_));
     if (VmbErrorSuccess == err) {
       diagnostic_msg_ = "Starting continuous image acquisition";
       ROS_INFO_STREAM("[" << name_
