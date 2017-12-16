@@ -65,6 +65,12 @@ function(add_dependencies_and_linkings arg)
       ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaC.so
       ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaCPP.so
     )
+  elseif("${ARCH}" STREQUAL armv8)
+    target_link_libraries(${arg}
+      ${catkin_LIBRARIES}
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_64bit/libVimbaC.so
+      ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_64bit/libVimbaCPP.so
+    )
   else()
     message(FATAL_ERROR "[libvimba]: Architecture ${ARCH} not suported. Exiting...")
   endif()
@@ -137,6 +143,12 @@ elseif("${ARCH}" STREQUAL armv7)
   install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaC.so
     ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_32bit/libVimbaCPP.so
+    DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  )
+elseif("${ARCH}" STREQUAL armv8)
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_64bit/libVimbaC.so
+    ${CMAKE_CURRENT_SOURCE_DIR}/lib/arm_64bit/libVimbaCPP.so
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
 endif()
