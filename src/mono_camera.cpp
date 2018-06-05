@@ -36,7 +36,7 @@
 
 namespace avt_vimba_camera {
 
-MonoCamera::MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
+MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
 
@@ -127,7 +127,7 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   int binning_or_decimation_y = std::max(config.binning_y, config.decimation_y);
 
   // Set the operational parameters in CameraInfo (binning, ROI)
-  ci.height    = config.height; 
+  ci.height    = config.height;
   ci.width     = config.width;
   ci.binning_x = binning_or_decimation_x;
   ci.binning_y = binning_or_decimation_y;

@@ -1,0 +1,5 @@
+<launch>
+  <node pkg="nodelet" type="nodelet" name="avt_vimba_nodelet_manager"  args="manager" output="screen"/>
+
+  <node pkg="nodelet" type="nodelet" name="mono_camera" args="load avt_vimba_camera/MonoCameraNodelet avt_vimba_nodelet_manager" output="screen"/>
+</launch>
