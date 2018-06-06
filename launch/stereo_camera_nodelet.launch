@@ -1,0 +1,26 @@
+<launch>
+  <arg name="name" default="stereo_camera" doc="The name of the camera"/>
+  <arg name="left_guid" doc="The GUID for the left camera"/>
+  <arg name="right_guid" doc="The GUID for the right camera"/>
+
+  <arg name="image_proc" default="false"/>
+  <arg name="left_camera_info_url" default="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg left_guid).yaml"/>
+  <arg name="right_camera_info_url" default="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg right_guid).yaml"/>
+
+  <!-- The nodelet manager -->
+  <node pkg="nodelet" type="nodelet" name="avt_vimba_nodelet_manager"  args="manager" output="screen"/>
+
+  <!-- The stereo image processing -->
+  <include if="$(arg image_proc)" ns="$(arg name)" file="$(find stereo_image_proc)/launch/stereo_image_proc.launch">
+    <arg name="manager" value="avt_vimba_nodelet_manager"/>
+  </include>
+
+  <!-- The stereo camera nodelet -->
+  <node pkg="nodelet" type="nodelet" name="$(arg name)" args="load avt_vimba_camera/StereoCameraNodelet avt_vimba_nodelet_manager" output="screen">
+    <param name="right_guid" value="$(arg right_guid)"/>
+    <param name="left_guid" value="$(arg left_guid)"/>
+    <param name="left_camera_info_url" value="$(arg left_camera_info_url)"/>
+    <param name="right_camera_info_url" value="$(arg right_camera_info_url)"/>
+  </node>
+
+</launch>

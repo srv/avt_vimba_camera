@@ -38,6 +38,9 @@
   <run_depend>polled_camera</run_depend>
   <run_depend>nodelet</run_depend>
 
+  <run_depend>image_proc</run_depend>
+  <run_depend>stereo_image_proc</run_depend>
+
   <!--run_depend>libvimba</run_depend-->
   <export>
     <nodelet plugin="${prefix}/plugins.xml" />
