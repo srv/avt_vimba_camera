@@ -143,10 +143,6 @@ install(DIRECTORY include
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
   plugins.xml
-  launch/mono_camera.launch
-  launch/mono_camera_nodelet.launch
-  launch/stereo_camera_one_node.launch
-  launch/stereo_camera_two_nodes.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
