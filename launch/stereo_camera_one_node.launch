@@ -2,11 +2,11 @@
 	<arg name="stereo" default="stereo"/>
 	<arg name="left_guid" default="50-0503343289"/>
 	<arg name="right_guid" default="50-0503343290"/>
-	<arg name="left_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg left_guid).yaml"/>
-	<arg name="right_camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg right_guid).yaml"/>
+	<arg name="left_camera_info_url" default="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg left_guid).yaml"/>
+	<arg name="right_camera_info_url" default="file://$(find avt_vimba_camera)/calibrations/calibration_$(arg right_guid).yaml"/>
 
 
-  	<node ns="$(arg stereo)" name="stereo_image_proc" pkg="stereo_image_proc" type="stereo_image_proc" output="screen"/>
+	<node ns="$(arg stereo)" name="stereo_image_proc" pkg="stereo_image_proc" type="stereo_image_proc" output="screen"/>
 
 	<node name="$(arg stereo)" pkg="avt_vimba_camera" type="stereo_camera_node" output="screen">
 
