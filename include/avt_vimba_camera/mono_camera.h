@@ -49,7 +49,7 @@
 namespace avt_vimba_camera {
 class MonoCamera {
  public:
-  MonoCamera(ros::NodeHandle nh, ros::NodeHandle nhp);
+  MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
 
  private:

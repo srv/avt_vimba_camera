@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   std_msgs
   polled_camera
+  nodelet
 )
 
 #Get architecture
@@ -113,12 +114,20 @@ add_executable(sync_node
 
 add_dependencies_and_linkings(sync_node)
 
+add_library(avt_camera_nodelets
+  src/nodes/mono_camera_nodelet.cpp
+  src/nodes/stereo_camera_nodelet.cpp
+  src/stereo_camera.cpp
+  src/avt_vimba_camera.cpp
+  src/frame_observer.cpp)
+add_dependencies_and_linkings(avt_camera_nodelets)
+
 #############
 ## Install ##
 #############
 
 ## Mark executables and/or libraries for installation
-install(TARGETS mono_camera_node stereo_camera_node
+install(TARGETS mono_camera_node stereo_camera_node avt_camera_nodelets
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -133,9 +142,15 @@ install(DIRECTORY include
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
+  plugins.xml
   launch/mono_camera.launch
+  launch/mono_camera_nodelet.launch
   launch/stereo_camera_one_node.launch
   launch/stereo_camera_two_nodes.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+)
+
+install(DIRECTORY launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
@@ -164,4 +179,3 @@ elseif("${ARCH}" STREQUAL armv8)
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
 endif()
-

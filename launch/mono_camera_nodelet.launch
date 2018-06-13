@@ -1,0 +1,48 @@
+<launch>
+  <arg name="name" default="camera" doc="The name of the camera"/>
+  <arg name="ip" default="" doc="The IP for the camera to connect to"/>
+  <arg name="guid" default="50-0503343290" doc="The GUID for the camera to connect to"/>
+  <arg name="frame_id" default="left_optical" doc="The frame id of the camera"/>
+  <arg name="image_proc" default="false"/>
+
+  <!-- The nodelet manager -->
+  <node pkg="nodelet" type="nodelet" name="avt_vimba_nodelet_manager"  args="manager" output="screen"/>
+
+  <!-- Image proccessing -->
+  <include if="$(arg image_proc)" ns="$(arg name)" file="$(find image_proc)/launch/image_proc.launch">
+    <arg name="manager" value="avt_vimba_nodelet_manager"/>
+  </include>
+
+  <!-- The mono camera nodelet -->
+  <node pkg="nodelet" type="nodelet" name="$(arg name)" args="load avt_vimba_camera/MonoCameraNodelet avt_vimba_nodelet_manager" output="screen">
+      <param name="guid" value="$(arg guid)"/>
+      <param name="ip" value="$(arg ip)"/>
+      <param name="camera_info_url" value="file://$(find avt_vimba_camera)/calibrations/calibration_50-0503343290.yaml"/>
+      <param name="frame_id" value="$(arg frame_id)"/>
+      <param name="trig_timestamp_topic" value=""/>
+      <param name="show_debug_prints" value="true"/>
+      <param name="trigger_source" value="FixedRate"/>
+      <param name="acquisition_mode" value="Continuous"/>
+      <!-- Acquisition rate in fps -->
+      <param name="acquisition_rate" value="12"/>
+      <param name="pixel_format" value="BayerRG8"/>
+      <!-- Exposure in us -->
+      <param name="exposure" value="1000"/>
+      <!-- Gain in dB -->
+      <param name="gain" value="0"/>
+      <param name="exposure_auto" value="Continuous"/>
+      <param name="gain_auto" value="Continuous"/>
+      <param name="whitebalance_auto" value="Continuous"/>
+
+      <param name="binning_x" value="1"/>
+      <param name="binning_y" value="1"/>
+      <param name="decimation_x" value="1"/>
+      <param name="decimation_y" value="1"/>
+      <param name="x_offset" value="8"/>
+      <param name="y_offset" value="9"/>
+      <param name="width" value="1920"/>
+      <param name="height" value="1440"/>
+
+      <param name="stream_bytes_per_second" value="45000000"/>
+  </node>
+</launch>
