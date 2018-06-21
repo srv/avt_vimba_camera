@@ -79,7 +79,7 @@ class MonoCamera {
   // Dynamic reconfigure
   typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
   typedef dynamic_reconfigure::Server<Config> ReconfigureServer;
-  ReconfigureServer reconfigure_server_;
+  boost::shared_ptr<ReconfigureServer> reconfigure_server_;
 
   // Camera configuration
   Config camera_config_;

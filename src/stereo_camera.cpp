@@ -35,7 +35,7 @@
 namespace avt_vimba_camera {
 
 StereoCamera::StereoCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
-: nh_(nh), nhp_(nhp), it_(nhp), left_cam_("left"), right_cam_("right") {
+: nh_(nh), nhp_(nhp), it_(nh), left_cam_("left"), right_cam_("right") {
 
   // Get the parameters
   nhp_.param("left_ip", left_ip_, std::string(""));
@@ -83,14 +83,16 @@ void StereoCamera::run() {
   updater_.update();
 
   // Set camera info managers
-  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "left"),"left_optical",left_camera_info_url_));
-  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "right"),"right_optical",right_camera_info_url_));
+  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nh_, "left"),"left_optical",left_camera_info_url_));
+  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nh_, "right"),"right_optical",right_camera_info_url_));
 
-  pub_left_temp_ = nhp_.advertise<std_msgs::Float64>("left/temp", 1, true);
-  pub_right_temp_ = nhp_.advertise<std_msgs::Float64>("right/temp", 1, true);
+  pub_left_temp_ = nh_.advertise<std_msgs::Float64>("left/temp", 1, true);
+  pub_right_temp_ = nh_.advertise<std_msgs::Float64>("right/temp", 1, true);
 
-  // Start dynamic_reconfigure & run configure()
-  reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
+  // Start up the dynamic_reconfigure service, note that this needs to stick around after this function ends
+  reconfigure_server_ = boost::make_shared <ReconfigureServer>(nhp_);
+  ReconfigureServer::CallbackType f = boost::bind(&StereoCamera::configure, this, _1, _2);
+  reconfigure_server_->setCallback(f);
 
 }
 

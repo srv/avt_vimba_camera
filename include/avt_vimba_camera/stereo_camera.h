@@ -108,7 +108,7 @@ class StereoCamera {
   typedef avt_vimba_camera::AvtVimbaCameraConfig Config;
   typedef avt_vimba_camera::AvtVimbaCameraStereoConfig StereoConfig;
   typedef dynamic_reconfigure::Server<StereoConfig> ReconfigureServer;
-  ReconfigureServer reconfigure_server_;
+  boost::shared_ptr<ReconfigureServer> reconfigure_server_;
 
   // Camera configuration
   StereoConfig camera_config_;
