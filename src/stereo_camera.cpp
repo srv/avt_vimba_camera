@@ -63,8 +63,8 @@ void StereoCamera::run() {
   api_.start();
 
   // Set the image publishers before the streaming
-  left_pub_  = it_.advertiseCamera("/stereo_down/left/image_raw",  1);
-  right_pub_ = it_.advertiseCamera("/stereo_down/right/image_raw", 1);
+  left_pub_  = it_.advertiseCamera("left/image_raw",  1);
+  right_pub_ = it_.advertiseCamera("right/image_raw", 1);
 
   // Set the frame callbacks
   left_cam_.setCallback(boost::bind(&avt_vimba_camera::StereoCamera::leftFrameCallback, this, _1));
@@ -83,14 +83,16 @@ void StereoCamera::run() {
   updater_.update();
 
   // Set camera info managers
-  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "left"),"left_optical",left_camera_info_url_));
-  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nhp_, "right"),"right_optical",right_camera_info_url_));
+  left_info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nh_, "left"),"left_optical",left_camera_info_url_));
+  right_info_man_ = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(ros::NodeHandle(nh_, "right"),"right_optical",right_camera_info_url_));
 
-  pub_left_temp_ = nhp_.advertise<std_msgs::Float64>("left_temp", 1, true);
-  pub_right_temp_ = nhp_.advertise<std_msgs::Float64>("right_temp", 1, true);
+  pub_left_temp_ = nh_.advertise<std_msgs::Float64>("left/temp", 1, true);
+  pub_right_temp_ = nh_.advertise<std_msgs::Float64>("right/temp", 1, true);
 
-  // Start dynamic_reconfigure & run configure()
-  reconfigure_server_.setCallback(boost::bind(&StereoCamera::configure, this, _1, _2));
+  // Start up the dynamic_reconfigure service, note that this needs to stick around after this function ends
+  reconfigure_server_ = boost::make_shared <ReconfigureServer>(nhp_);
+  ReconfigureServer::CallbackType f = boost::bind(&StereoCamera::configure, this, _1, _2);
+  reconfigure_server_->setCallback(f);
 
 }
 

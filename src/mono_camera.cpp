@@ -36,7 +36,7 @@
 
 namespace avt_vimba_camera {
 
-MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
+MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp_(nhp), it_(nh), cam_(ros::this_node::getName()) {
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
 
@@ -60,8 +60,10 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
 
-  // Start dynamic_reconfigure & run configure()
-  reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
+  // Start up the dynamic_reconfigure service, note that this needs to stick around after this function ends
+  reconfigure_server_ = boost::make_shared <ReconfigureServer>(nhp_);
+  ReconfigureServer::CallbackType f = boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2);
+  reconfigure_server_->setCallback(f);
 }
 
 MonoCamera::~MonoCamera(void) {
