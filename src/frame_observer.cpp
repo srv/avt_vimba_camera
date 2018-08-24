@@ -74,6 +74,9 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
       }
     }
   }
+  else {
+    std::cerr << "ERR: No Success receiving status" << err << std::endl;
+  }
 
-  cam_ptr_->QueueFrame( vimba_frame_ptr );
+  VmbErrorType rc = cam_ptr_->QueueFrame( vimba_frame_ptr );
 }

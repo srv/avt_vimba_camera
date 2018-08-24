@@ -55,7 +55,8 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
   nhp_.param("camera_info_url", camera_info_url_, std::string(""));
   std::string frame_id;
   nhp_.param("frame_id", frame_id, std::string(""));
-  nhp_.param("show_debug_prints", show_debug_prints_, false);
+  nhp_.param("show_debug_prints", show_debug_prints_, show_debug_prints_);
+  nhp_.param("num_frames", num_frames_, 3);
 
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
@@ -103,7 +104,7 @@ void MonoCamera::configure(Config& newconfig, uint32_t level) {
     // The camera already stops & starts acquisition
     // so there's no problem on changing any feature.
     if (!cam_.isOpened()) {
-      cam_.start(ip_, guid_, show_debug_prints_);
+      cam_.start(ip_, guid_, show_debug_prints_, num_frames_);
     }
 
     Config config = newconfig;
