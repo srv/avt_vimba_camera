@@ -31,7 +31,19 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/frame_observer.h>
-#include <iostream>
+
+#include <ros/console.h>
+
+namespace
+{
+  char const * frameStatusNames[] {
+    "VmbFrameStatus Undefined",   //       =  0,      // Frame has been completed without errors - should not trigger error report
+    "VmbFrameStatusIncomplete", //       = -1,      // Frame could not be filled to the end
+    "VmbFrameStatusTooSmall",   //       = -2,      // Frame buffer was too small
+    "VmbFrameStatusInvalid"     //       = -3,      // Frame buffer was invalid
+  };
+}
+
 
 FrameObserver::FrameObserver(CameraPtr cam_ptr, Callback callback) : IFrameObserver( cam_ptr ), callback_(callback), cam_ptr_(cam_ptr)
 {
@@ -43,36 +55,12 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
   VmbFrameStatusType eReceiveStatus;
   VmbErrorType err = vimba_frame_ptr->GetReceiveStatus(eReceiveStatus);
 
-  if (err == VmbErrorSuccess) {
-    switch (eReceiveStatus)
-    {
-      case VmbFrameStatusComplete:
-      {
-        // Call the callback
-        callback_(vimba_frame_ptr);
-        break;
-      }
-      case VmbFrameStatusIncomplete:
-      {
-        std::cout << "ERR: FrameObserver VmbFrameStatusIncomplete" << std::endl;
-        break;
-      }
-      case VmbFrameStatusTooSmall:
-      {
-        std::cout << "ERR: FrameObserver VmbFrameStatusTooSmall" << std::endl;
-        break;
-      }
-      case VmbFrameStatusInvalid:
-      {
-        std::cout << "ERR: FrameObserver VmbFrameStatusInvalid" << std::endl;
-        break;
-      }
-      default:
-      {
-        std::cout << "ERR: FrameObserver no known status" << std::endl;
-        break;
-      }
-    }
+  if (err == VmbErrorSuccess && eReceiveStatus == VmbFrameStatusComplete) {
+    callback_(vimba_frame_ptr);
+  }
+  else {
+    char const * errorName = frameStatusNames[std::min(abs(eReceiveStatus), 3)];
+    ROS_ERROR_STREAM("FrameObserver callback error: " << err);
   }
 
   cam_ptr_->QueueFrame( vimba_frame_ptr );
