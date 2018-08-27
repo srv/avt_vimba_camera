@@ -112,8 +112,6 @@ class AvtVimbaCamera {
   SP_DECL(FrameObserver) frame_obs_ptr_;
   // The currently streaming camera
   CameraPtr vimba_camera_ptr_;
-  // Current frame
-  FramePtr vimba_frame_ptr_;
   // The max width
   VmbInt64_t vimba_camera_max_width_;
   // The max height
