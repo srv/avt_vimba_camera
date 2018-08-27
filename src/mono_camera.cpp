@@ -36,7 +36,14 @@
 
 namespace avt_vimba_camera {
 
-MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
+MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) :
+  nh_(nh),
+  nhp_(nhp),
+  it_(nhp),
+  cam_(ros::this_node::getName()),
+  ci_(new sensor_msgs::CameraInfo()),
+  img_(new sensor_msgs::Image())
+{
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
 
@@ -72,13 +79,24 @@ MonoCamera::~MonoCamera(void) {
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
   ros::Time ros_time = ros::Time::now();
+
+  // unshare data structures if necessary
+  if (!ci_.unique()) {
+    ci_.reset(new sensor_msgs::CameraInfo());
+  }
+  if (!img_.unique()) {
+    img_.reset(new sensor_msgs::Image());
+  }
+
   if (pub_.getNumSubscribers() > 0) {
-    sensor_msgs::Image img;
-    if (api_.frameToImage(vimba_frame_ptr, img)) {
-      sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
-      ci.header.stamp = img.header.stamp = ros_time;
-      img.header.frame_id = ci.header.frame_id;
-      pub_.publish(img, ci);
+    if (api_.frameToImage(vimba_frame_ptr, *(img_))) {
+      *(ci_) = info_man_->getCameraInfo();
+      ci_->header.stamp = ros_time;
+
+      img_->header.frame_id = ci_->header.frame_id;
+      img_->header.stamp = ros_time;
+
+      pub_.publish(img_, ci_);
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
     }

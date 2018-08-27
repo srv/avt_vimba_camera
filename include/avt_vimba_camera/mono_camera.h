@@ -68,6 +68,9 @@ class MonoCamera {
   bool show_debug_prints_;
   int num_frames_;
 
+  sensor_msgs::CameraInfo::Ptr ci_;
+  sensor_msgs::Image::Ptr img_;
+
   image_transport::ImageTransport it_;
   // ROS Camera publisher
   image_transport::CameraPublisher pub_;
