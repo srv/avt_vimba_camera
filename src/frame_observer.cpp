@@ -53,7 +53,7 @@ FrameObserver::FrameObserver(CameraPtr cam_ptr, Callback callback) : IFrameObser
 
 void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
 {
-  VmbFrameStatusType eReceiveStatus;
+  VmbFrameStatusType eReceiveStatus = VmbFrameStatusComplete;
   VmbErrorType err = vimba_frame_ptr->GetReceiveStatus(eReceiveStatus);
 
   if (err == VmbErrorSuccess && eReceiveStatus == VmbFrameStatusComplete) {
