@@ -77,7 +77,7 @@ class AvtVimbaCamera {
  public:
   AvtVimbaCamera();
   AvtVimbaCamera(std::string name);
-  void start(std::string ip_str, std::string guid_str, bool debug_prints = true);
+  void start(std::string ip_str, std::string guid_str, bool debug_prints = true, int num_frames = 3);
   void stop();
   double getTimestamp(void);
   bool resetTimestamp(void);

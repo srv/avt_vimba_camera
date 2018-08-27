@@ -62,6 +62,9 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
     char const * errorName = frameStatusNames[std::min(abs(eReceiveStatus), 3)];
     ROS_ERROR_STREAM("FrameObserver callback error: " << err);
   }
+  else {
+    std::cerr << "ERR: No Success receiving status" << err << std::endl;
+  }
 
-  cam_ptr_->QueueFrame( vimba_frame_ptr );
+  VmbErrorType rc = cam_ptr_->QueueFrame( vimba_frame_ptr );
 }

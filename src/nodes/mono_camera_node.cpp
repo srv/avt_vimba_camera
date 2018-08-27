@@ -11,5 +11,6 @@ int main(int argc, char** argv)
   avt_vimba_camera::MonoCamera mc(nh,nhp);
 
   ros::spin();
+  std::cerr << "cam node shutting down" << std::endl;
   return 0;
 }

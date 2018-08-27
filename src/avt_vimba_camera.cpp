@@ -89,14 +89,17 @@ static const char* State[] = {
 static volatile int keepRunning = 1;
 
 void intHandler(int dummy) {
-    keepRunning = 0;
+  std::cerr << "signal received, shutting down" << std::endl;
+  keepRunning = 0;
 }
 
 AvtVimbaCamera::AvtVimbaCamera() : AvtVimbaCamera(ros::this_node::getName().c_str()) {
 
 }
 
-AvtVimbaCamera::AvtVimbaCamera(std::string name) {
+AvtVimbaCamera::AvtVimbaCamera(std::string name) :
+  num_frames_(3)
+{
   // Init global variables
   opened_ = false;   // camera connected to the api
   streaming_ = false;  // capturing frames
@@ -113,10 +116,11 @@ AvtVimbaCamera::AvtVimbaCamera(std::string name) {
   updater_.update();
 }
 
-void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_prints) {
+void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_prints, int num_frames) {
   if (opened_) return;
 
   show_debug_prints_ = debug_prints;
+  num_frames_ = num_frames;
   updater_.broadcast(0, "Starting device with IP:" + ip_str + " or GUID:" + guid_str);
 
   // Determine which camera to use. Try IP first
@@ -169,7 +173,10 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 
   std::string trigger_source;
   getFeatureValue("TriggerSource", trigger_source);
-  int trigger_source_int = getTriggerModeInt(trigger_source);
+  int trigger_source_int = FixedRate;
+  if (!trigger_source.empty()) {
+    getTriggerModeInt(trigger_source);
+  }
 
   if (trigger_source_int == Freerun   ||
       trigger_source_int == FixedRate ||
@@ -194,7 +201,7 @@ void AvtVimbaCamera::startImaging(void) {
   if (!streaming_) {
     // Start streaming
     VmbErrorType err =
-      vimba_camera_ptr_->StartContinuousImageAcquisition(1,  // num_frames_,
+      vimba_camera_ptr_->StartContinuousImageAcquisition(num_frames_,
       IFrameObserverPtr(frame_obs_ptr_));
     if (VmbErrorSuccess == err) {
       diagnostic_msg_ = "Starting continuous image acquisition";
@@ -397,6 +404,7 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
   VmbFeatureDataType data_type;
   err = vimba_camera_ptr_->GetFeatureByName(feature_str.c_str(),
                                             vimba_feature_ptr);
+
   if (VmbErrorSuccess == err) {
     bool readable;
     vimba_feature_ptr->IsReadable(readable);
@@ -434,6 +442,12 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
           ROS_WARN_STREAM("Could not get feature value. Error code: "
                     << api_.errorCodeToMessage(err));
         }
+        else if (show_debug_prints_) {
+          ROS_INFO_STREAM("Asking for feature "
+            << feature_str << " with datatype "
+            << FeatureDataType[data_type]
+            << " and value " << val);
+        }
       }
     } else {
       ROS_WARN_STREAM("[" << name_ << "]: Feature "
@@ -444,11 +458,7 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str, T& val) {
     ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str);
   }
-  if (show_debug_prints_)
-    ROS_INFO_STREAM("Asking for feature "
-      << feature_str << " with datatype "
-      << FeatureDataType[data_type]
-      << " and value " << val);
+
   return (VmbErrorSuccess == err);
 }
 
@@ -488,6 +498,11 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str,
           ROS_WARN_STREAM("Could not get feature value. Error code: "
                     << api_.errorCodeToMessage(err));
         }
+        else if(show_debug_prints_) {
+          ROS_INFO_STREAM("Asking for feature " << feature_str
+            << " with datatype " << FeatureDataType[data_type]
+            << " and value " << val);
+        }
       }
     } else {
       ROS_WARN_STREAM("[" << name_ << "]: Feature "
@@ -497,11 +512,6 @@ bool AvtVimbaCamera::getFeatureValue(const std::string& feature_str,
   } else {
     ROS_WARN_STREAM("[" << name_
       << "]: Could not get feature " << feature_str);
-  }
-  if(show_debug_prints_) {
-    ROS_INFO_STREAM("Asking for feature " << feature_str
-      << " with datatype " << FeatureDataType[data_type]
-      << " and value " << val);
   }
   return (VmbErrorSuccess == err);
 }
@@ -793,7 +803,7 @@ void AvtVimbaCamera::updateAcquisitionConfig(Config& config) {
   }
   if (config.acquisition_rate != config_.acquisition_rate || on_init_) {
     changed = true;
-    double acquisition_frame_rate_limit;
+    double acquisition_frame_rate_limit = 120;
     getFeatureValue("AcquisitionFrameRateLimit", acquisition_frame_rate_limit);
     if (acquisition_frame_rate_limit < config.acquisition_rate) {
       double rate = (double)floor(acquisition_frame_rate_limit);
