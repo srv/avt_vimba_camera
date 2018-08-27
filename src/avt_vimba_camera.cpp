@@ -89,8 +89,8 @@ static const char* State[] = {
 static volatile int keepRunning = 1;
 
 void intHandler(int dummy) {
-  std::cerr << "signal received, shutting down" << std::endl;
   keepRunning = 0;
+  ros::shutdown();
 }
 
 AvtVimbaCamera::AvtVimbaCamera() : AvtVimbaCamera(ros::this_node::getName().c_str()) {
@@ -365,10 +365,7 @@ void AvtVimbaCamera::frameCallback(const FramePtr vimba_frame_ptr) {
   diagnostic_msg_ = "Camera operating normally";
 
   // Call the callback implemented by other classes
-//   boost::thread thread_callback = boost::thread(userFrameCallback, vimba_frame_ptr);
-//   thread_callback.join();
-
-  userFrameCallback(vimba_frame_ptr_);
+  userFrameCallback(vimba_frame_ptr);
 
   updater_.update();
 }
