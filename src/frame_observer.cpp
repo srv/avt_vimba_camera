@@ -31,6 +31,7 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/frame_observer.h>
+#include <avt_vimba_camera/avt_vimba_api.h>
 
 #include <ros/console.h>
 
@@ -60,11 +61,12 @@ void FrameObserver::FrameReceived( const FramePtr vimba_frame_ptr )
   }
   else {
     char const * errorName = frameStatusNames[std::min(abs(eReceiveStatus), 3)];
-    ROS_ERROR_STREAM("FrameObserver callback error: " << err);
-  }
-  else {
-    std::cerr << "ERR: No Success receiving status" << err << std::endl;
+    ROS_ERROR_STREAM("FrameObserver callback error GetReceiveStatus() : " << errorName);
   }
 
   VmbErrorType rc = cam_ptr_->QueueFrame( vimba_frame_ptr );
+  if (rc != VmbErrorSuccess) {
+    avt_vimba_camera::AvtVimbaApi api;
+    ROS_ERROR_STREAM("FrameObserver callback error QueueFrame(): " << api.errorCodeToMessage(rc));
+  }
 }
