@@ -6,7 +6,7 @@ namespace avt_vimba_camera
     void MonoCameraNodelet::onInit()
     {
         NODELET_DEBUG("Initializing nodelet...");
-				camera_ = new MonoCamera(getMTNodeHandle(), getMTPrivateNodeHandle());
+				camera_ = new MonoCamera(getNodeHandle(), getPrivateNodeHandle());
     }
 
     MonoCameraNodelet::~MonoCameraNodelet()
