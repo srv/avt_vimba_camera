@@ -42,7 +42,8 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) :
   it_(nhp),
   cam_(ros::this_node::getName()),
   ci_(new sensor_msgs::CameraInfo()),
-  img_(new sensor_msgs::Image())
+  img_(new sensor_msgs::Image()),
+  reconfigure_server_(nhp)
 {
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
