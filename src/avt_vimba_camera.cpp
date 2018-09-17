@@ -753,6 +753,21 @@ void AvtVimbaCamera::printAllCameraFeatures(const CameraPtr& camera) {
           if (VmbErrorSuccess == err) {
             std::cout << strValue << " str Enum" << std::endl;
           }
+          {
+            EnumEntryVector entries;
+            (*iter)->GetEntries(entries);
+            std::cout << "/// Entries: ";
+            for (size_t i = 0; i < entries.size(); ++i) {
+              if (i != 0) {
+                std::cout << ", ";
+              }
+              std::string name;
+              entries[i].GetName(name);
+              std::cout << "[" << name << "]";
+            }
+            std::cout << std::endl;
+          }
+
           break;
           case VmbFeatureDataFloat:
           double fValue;
