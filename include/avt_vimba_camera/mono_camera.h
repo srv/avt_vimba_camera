@@ -67,6 +67,8 @@ class MonoCamera {
   std::string camera_info_url_;
   bool show_debug_prints_;
 
+  ros::Publisher status_pub_;
+  ros::Subscriber alert_sub_;
   image_transport::ImageTransport it_;
   // ROS Camera publisher
   image_transport::CameraPublisher pub_;

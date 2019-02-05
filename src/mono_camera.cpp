@@ -1,3 +1,5 @@
+
+
 /// Copyright (c) 2014,
 /// Systems, Robotics and Vision Group
 /// University of the Balearic Islands
@@ -46,8 +48,10 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
   // Set the image publisher before the streaming
   pub_  = it_.advertiseCamera("image_raw",  1);
 
+  status_pub_ = nh_.advertise<cav_msgs::DriverStatus>("/driver_discovery", 1);
+  alert_sub_ = nh_.subscribe("/system_alert",10,&alertCallback,this);
   // Set the frame callback
-  cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
+  cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, 1));
 
   // Set the params
   nhp_.param("ip", ip_, std::string(""));
@@ -62,6 +66,9 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
+
+status_.name=ros::this_node::getName();
+status_.camera=true;
 }
 
 MonoCamera::~MonoCamera(void) {
@@ -163,3 +170,22 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
 }
 
 };
+
+void MonoCamera::publish_status()
+{
+#dynamic status
+status_.status=cav_msgs::DriverStatus::OFF;
+status_.status=cav_msgs::DriverStatus::OPERATIONAL;
+status_.status=cav_msgs::DriverStatus::DEGRADED;
+status_.status=cav_msgs::DriverStatus::FAULT;
+status_pub_.publish(status_);
+}
+
+void MonoCamera::alertCallback(const cav_msgs::SystemAlertConstPtr &msg)
+{
+if( msg->type==cav_msgs::SystemAlert::FATAL or msg->type==cav_msgs::SystemAlert::SHUTDOWN)
+{
+ros::shutdown();
+}
+
+}
