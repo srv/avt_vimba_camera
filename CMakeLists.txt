@@ -3,6 +3,7 @@ project(avt_vimba_camera)
 
 find_package(catkin REQUIRED COMPONENTS
   #libvimba
+  cav_msgs
   camera_info_manager
   diagnostic_updater
   dynamic_reconfigure
@@ -28,8 +29,9 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
+  LIBRARIES ${PROJECT_NAME}
   INCLUDE_DIRS include
-  CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera
+  CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera cav_msgs
 )
 
 ###########
@@ -58,6 +60,7 @@ function(add_dependencies_and_linkings arg)
   add_dependencies(${arg}
     ${PROJECT_NAME}_gencfg
     #${libvimba_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS}
   )
 
   if("${ARCH}" STREQUAL i386)
@@ -89,12 +92,14 @@ function(add_dependencies_and_linkings arg)
   endif()
 endfunction(add_dependencies_and_linkings)
 
+#file(GLOB_RECURSE headers */*.hpp */*.h)
+
 add_executable(mono_camera_node
   src/nodes/mono_camera_node.cpp
   src/mono_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp
-)
+    )
 
 add_dependencies_and_linkings(mono_camera_node)
 
@@ -103,14 +108,14 @@ add_executable(stereo_camera_node
   src/stereo_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp
-)
+  )
 
 add_dependencies_and_linkings(stereo_camera_node)
 
 add_executable(sync_node
   src/nodes/sync_node.cpp
   src/sync.cpp
-)
+  )
 
 add_dependencies_and_linkings(sync_node)
 
