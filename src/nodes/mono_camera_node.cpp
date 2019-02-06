@@ -7,11 +7,11 @@ int main(int argc, char** argv)
 
   ros::NodeHandle nh;
   ros::NodeHandle nhp("~");
-  ros::Rate loop_rate(19);
+  ros::Rate loop_rate(10);
   avt_vimba_camera::MonoCamera mc(nh,nhp);
  
  // ros::spin();
-while(ros::ok)
+while(ros::ok())
 {
 mc.publish_status();
 ros::spinOnce();
