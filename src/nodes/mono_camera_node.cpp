@@ -14,6 +14,7 @@ int main(int argc, char** argv)
 while(ros::ok())
 {
 mc.publish_status();
+mc.time_compare();
 ros::spinOnce();
 loop_rate.sleep();
 }

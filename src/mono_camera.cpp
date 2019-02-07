@@ -1,5 +1,3 @@
-
-
 /// Copyright (c) 2014,
 /// Systems, Robotics and Vision Group
 /// University of the Balearic Islands
@@ -33,7 +31,6 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/mono_camera.h>
-#include <iostream>
 #define DEBUG_PRINTS 1
 
 namespace avt_vimba_camera {
@@ -46,10 +43,12 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 
   // Set the image publisher before the streaming
   pub_  = it_.advertiseCamera("image_raw",  1);
-
+  //Publisher object for driver status
   status_pub_ = nh_.advertise<cav_msgs::DriverStatus>("driver_discovery", 1);
+  //Subscriber object for system alert
   alert_sub_ = nh_.subscribe("system_alert",10,&MonoCamera::alertCallback,this);
   // Set the frame callback
+  
   cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
 
   // Set the params
@@ -62,37 +61,29 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
-//issue
-
   status_.name=ros::this_node::getName();
   status_.camera=true;
-
-flag=1;
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
-
-
 }
 
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
   flag=1;
-
  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
+   flag=2;
+   last_time=ros::Time::now();
   ros::Time ros_time = ros::Time::now();
   if (pub_.getNumSubscribers() > 0) {
-    sensor_msgs::Image img;
-
+sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)) {
-
       sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
       ci.header.stamp = img.header.stamp = ros_time;
       img.header.frame_id = ci.header.frame_id;
       pub_.publish(img, ci);
-      flag=2;
 
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
@@ -184,14 +175,12 @@ void MonoCamera::publish_status()
 
  if (flag==1)
 {
-    ROS_INFO_STREAM("1");
-status_.status=cav_msgs::DriverStatus::OFF;
+ status_.status=cav_msgs::DriverStatus::OFF;
 }
 else if (flag==2)
 {
 status_.status=cav_msgs::DriverStatus::OPERATIONAL;
 }
-//status_.status=cav_msgs::DriverStatus::DEGRADED;
 else if (flag==3)
 {
 status_.status=cav_msgs::DriverStatus::FAULT;
@@ -206,6 +195,19 @@ if( msg->type==cav_msgs::SystemAlert::FATAL || msg->type==cav_msgs::SystemAlert:
 ros::shutdown();
 }
 
+}
+
+void MonoCamera::time_compare()
+{
+    ros::Duration img_time_difference=ros::Time::now()-last_time;
+    ROS_INFO_STREAM(ros::Time::now());
+    ROS_INFO_STREAM(last_time);
+    ros::Duration three_seconds(3.0);
+    ROS_INFO_STREAM(img_time_difference);
+if ((img_time_difference>three_seconds) && flag==2)
+{
+    flag=1;
+}
 }
 
 };

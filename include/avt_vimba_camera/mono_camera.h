@@ -54,12 +54,13 @@ class MonoCamera {
   ~MonoCamera(void);
  void publish_status();
  void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);
+ void time_compare();
  int flag;
  private:
   cav_msgs::DriverStatus status_;
   AvtVimbaApi api_;
   AvtVimbaCamera cam_;
-
+  ros::Time last_time;
   // diagnostic_updater::Updater updater_;
   // diagnostic_updater::TopicDiagnostic* pub_freq_;
 

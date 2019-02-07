@@ -29,7 +29,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-  LIBRARIES ${PROJECT_NAME}
+  #LIBRARIES ${PROJECT_NAME}
   INCLUDE_DIRS include
   CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera cav_msgs
 )
@@ -91,8 +91,6 @@ function(add_dependencies_and_linkings arg)
     message(FATAL_ERROR "[libvimba]: Architecture ${ARCH} not suported. Exiting...")
   endif()
 endfunction(add_dependencies_and_linkings)
-
-#file(GLOB_RECURSE headers */*.hpp */*.h)
 
 add_executable(mono_camera_node
   src/nodes/mono_camera_node.cpp
