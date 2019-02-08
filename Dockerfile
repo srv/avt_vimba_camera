@@ -25,6 +25,13 @@ ARG BUILD_DATE="NULL"
 ARG VERSION="NULL"
 ARG VCS_REF="NULL"
 
+# Install driver dependencies
+RUN sudo apt-get update && \
+    sudo apt-get install ros-kinetic-camera-info-manager
+    sudo apt-get install ros-kinetic-image-geometry
+    sudo apt-get install ros-kinetic-polled-camera
+    
+
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.name="carma-avt-vimba-driver"
 LABEL org.label-schema.description="AVT VIMBA vision driver + driver wrapper for the CARMA Platform"
