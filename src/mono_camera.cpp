@@ -43,10 +43,7 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 
   // Set the image publisher before the streaming
   pub_  = it_.advertiseCamera("image_raw",  1);
-  //Publisher object for driver status
-  status_pub_ = nh_.advertise<cav_msgs::DriverStatus>("driver_discovery", 1);
-  //Subscriber object for system alert
-  alert_sub_ = nh_.subscribe("system_alert",10,&MonoCamera::alertCallback,this);
+
   // Set the frame callback
   
   cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
@@ -61,8 +58,7 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 
   // Set camera info manager
   info_man_  = boost::shared_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nhp_, frame_id, camera_info_url_));
-  status_.name=ros::this_node::getName();
-  status_.camera=true;
+
   // Start dynamic_reconfigure & run configure()
   reconfigure_server_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::configure, this, _1, _2));
 }
@@ -71,6 +67,7 @@ MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
   flag=1;
+
  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
@@ -170,41 +167,15 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   info_man_->setCameraInfo(ci);
 }
 
-void MonoCamera::publish_status()
-{
 
- if (flag==1)
-{
- status_.status=cav_msgs::DriverStatus::OFF;
-}
-else if (flag==2)
-{
-status_.status=cav_msgs::DriverStatus::OPERATIONAL;
-}
-else if (flag==3)
-{
-status_.status=cav_msgs::DriverStatus::FAULT;
-}
-status_pub_.publish(status_);
-}
 
-void MonoCamera::alertCallback(const cav_msgs::SystemAlertConstPtr &msg)
-{
-if( msg->type==cav_msgs::SystemAlert::FATAL || msg->type==cav_msgs::SystemAlert::SHUTDOWN)
-{
-ros::shutdown();
-}
 
-}
 
 void MonoCamera::time_compare()
 {
     ros::Duration img_time_difference=ros::Time::now()-last_time;
-    ROS_INFO_STREAM(ros::Time::now());
-    ROS_INFO_STREAM(last_time);
     ros::Duration three_seconds(3.0);
-    ROS_INFO_STREAM(img_time_difference);
-if ((img_time_difference>three_seconds) && flag==2)
+    if ((img_time_difference>three_seconds) && flag==2)
 {
     flag=1;
 }
