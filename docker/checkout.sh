@@ -19,4 +19,3 @@
 set -ex
 
 git clone https://github.com/usdot-fhwa-stol/CARMAMsgs.git ~/src/CARMAMsgs
-git clone https://github.com/usdot-fhwa-stol/CARMADriverUtils.git ~/src/CARMADriverUtils
