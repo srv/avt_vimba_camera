@@ -58,7 +58,7 @@ jobs:
           name: Build Driver
           command: |
             source ${INIT_ENV}
-            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make --mem-limit 70% install 
+            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make --force-cmake --mem-limit 70% install 
       - run:
           name: Run C++ Tests
           command: |
