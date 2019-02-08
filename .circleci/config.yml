@@ -58,7 +58,7 @@ jobs:
           name: Build Driver
           command: |
             source ${INIT_ENV}
-            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make install -DCMAKE_BUILD_TYPE=Debug
+            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make -DCMAKE_BUILD_TYPE=Debug install 
       - run:
           name: Run C++ Tests
           command: |
