@@ -58,7 +58,7 @@ jobs:
           name: Build Driver
           command: |
             source ${INIT_ENV}
-            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make install 
+            build-wrapper-linux-x86-64 --out-dir /opt/carma/bw-output catkin_make install -j 2
       - run:
           name: Run C++ Tests
           command: |
