@@ -66,12 +66,12 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
-  flag=1;
+  flag=cav_msgs::DriverStatus::OFF;
 
  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
-   flag=2;
+   flag=cav_msgs::DriverStatus::OPERATIONAL;
    last_time=ros::Time::now();
   ros::Time ros_time = ros::Time::now();
   if (pub_.getNumSubscribers() > 0) {
@@ -84,7 +84,7 @@ sensor_msgs::Image img;
 
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
-      flag=3;
+      flag=cav_msgs::DriverStatus::FAULT;
     }
   }
   // updater_.update();
@@ -175,9 +175,9 @@ void MonoCamera::time_compare()
 {
     ros::Duration img_time_difference=ros::Time::now()-last_time;
     ros::Duration three_seconds(3.0);
-    if ((img_time_difference>three_seconds) && flag==2)
+    if ((img_time_difference>three_seconds) && flag==cav_msgs::DriverStatus::OPERATIONAL)
 {
-    flag=1;
+    flag=cav_msgs::DriverStatus::OFF;
 }
 }
 

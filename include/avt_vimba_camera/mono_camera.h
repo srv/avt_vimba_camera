@@ -46,16 +46,14 @@
 #include <cav_msgs/SystemAlert.h>
 #include <cav_msgs/DriverStatus.h>
 #include <string>
-extern int flag;
+
 namespace avt_vimba_camera {
 class MonoCamera {
  public:
   MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
- //void publish_status();
- //void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);
  void time_compare();
-//int flag;
+ int flag;
  private:
 
   AvtVimbaApi api_;

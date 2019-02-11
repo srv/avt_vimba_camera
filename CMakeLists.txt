@@ -97,6 +97,7 @@ add_executable(mono_camera_node
   src/mono_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp
+  src/status_camera.cpp
     )
 
 add_dependencies_and_linkings(mono_camera_node)
