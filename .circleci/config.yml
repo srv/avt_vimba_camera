@@ -85,6 +85,7 @@ jobs:
             echo "PR number ${PR_NUM}"
             export BASE_BRANCH_URL="https://api.github.com/repos/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/pulls/${PR_NUM}"
             export TARGET_BRANCH=$(curl "$BASE_BRANCH_URL" | jq '.base.ref' | tr -d '"') 
+            echo $BASE_BRANCH_URL
             echo "Target Branch = ${TARGET_BRANCH}"
             cd src/CARMAAvtVimbaDriver
             echo "Branches"
