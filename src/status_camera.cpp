@@ -1,20 +1,20 @@
 #include <avt_vimba_camera/status_camera.h>
 
-Status_camera::Status_camera(ros::NodeHandle nh, ros::NodeHandle nhp)
+StatusCamera::StatusCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 {
     status_.name=ros::this_node::getName();
     status_.camera=true;
     nh_=nh;
     nhp_=nhp;
-    //Subscriber object for system alert
+    //Publisher object for driver_discovery
     status_pub_ = nh_.advertise<cav_msgs::DriverStatus>("driver_discovery", 1);
 }
-
-Status_camera::~Status_camera() {
-    my_thread_->interrupt();
+//Destructor to interrupt the cam_thread
+StatusCamera::~StatusCamera() {
+    cam_thread_->interrupt();
 }
-
-void Status_camera::alertCallback(const cav_msgs::SystemAlertConstPtr &msg)
+//System alert function definition
+void StatusCamera::alertCallback(const cav_msgs::SystemAlertConstPtr &msg)
 {
 if( msg->type==cav_msgs::SystemAlert::FATAL || msg->type==cav_msgs::SystemAlert::SHUTDOWN)
 {
@@ -22,34 +22,35 @@ ros::shutdown();
 }
 }
 
-void Status_camera::publish_status()
-{
+void StatusCamera::publish_status()
+{  //Various driver status conditions
     while(true){
-        if (status1==cav_msgs::DriverStatus::OFF)
+        if (status_cam==cav_msgs::DriverStatus::OFF)
        {
         status_.status=cav_msgs::DriverStatus::OFF;
        }
-       else if (status1==cav_msgs::DriverStatus::OPERATIONAL)
+       else if (status_cam==cav_msgs::DriverStatus::OPERATIONAL)
        {
        status_.status=cav_msgs::DriverStatus::OPERATIONAL;
        }
-       else if (status1==cav_msgs::DriverStatus::FAULT)
+       else if (status_cam==cav_msgs::DriverStatus::FAULT)
        {
        status_.status=cav_msgs::DriverStatus::FAULT;
        }
+       //Publisher for driver_status
        status_pub_.publish(status_);
        ros::Duration(0.1).sleep();
     }
 }
-
-void Status_camera::pre_camera()
+//Start the thread and subscriber declaration
+void StatusCamera::pre_camera()
 {
-    my_thread_ = new boost::thread(boost::bind(&Status_camera::publish_status,this));
-    alert_sub_ = nh_.subscribe<cav_msgs::SystemAlert>("system_alert",10,&Status_camera::alertCallback, this);
+    cam_thread_ = new boost::thread(boost::bind(&StatusCamera::publish_status,this));
+    alert_sub_ = nh_.subscribe<cav_msgs::SystemAlert>("system_alert",10,&StatusCamera::alertCallback, this);
 }
-
-void Status_camera::post_camera()
+//Interrupt the cam_thread
+void StatusCamera::post_camera()
 {
-    my_thread_->interrupt();
+    cam_thread_->interrupt();
 
 }

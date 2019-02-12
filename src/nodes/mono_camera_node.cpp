@@ -8,18 +8,17 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle nhp("~");
   ros::Rate loop_rate(10);
-  Status_camera h(nh,nhp);
-  h.pre_camera();
+  StatusCamera hc(nh,nhp);
+  hc.pre_camera();
   avt_vimba_camera::MonoCamera mc(nh,nhp);
-  h.post_camera();
+  hc.post_camera();
 
 while(ros::ok())
 {
-
-h.status1=mc.flag;
-mc.time_compare();
+mc.updateCameraStatus();
 ros::spinOnce();
 loop_rate.sleep();
+hc.status_cam=mc.cam_status;
 }
   return 0;
 }

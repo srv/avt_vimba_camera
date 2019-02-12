@@ -66,16 +66,16 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
-  flag=cav_msgs::DriverStatus::OFF;
+  cam_status=cav_msgs::DriverStatus::OFF;
 
  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
-   flag=cav_msgs::DriverStatus::OPERATIONAL;
-   last_time=ros::Time::now();
+   cam_status=cav_msgs::DriverStatus::OPERATIONAL;
+   last_time_=ros::Time::now();
   ros::Time ros_time = ros::Time::now();
   if (pub_.getNumSubscribers() > 0) {
-sensor_msgs::Image img;
+    sensor_msgs::Image img;
     if (api_.frameToImage(vimba_frame_ptr, img)) {
       sensor_msgs::CameraInfo ci = info_man_->getCameraInfo();
       ci.header.stamp = img.header.stamp = ros_time;
@@ -84,7 +84,7 @@ sensor_msgs::Image img;
 
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
-      flag=cav_msgs::DriverStatus::FAULT;
+      cam_status=cav_msgs::DriverStatus::FAULT;
     }
   }
   // updater_.update();
@@ -167,20 +167,16 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   info_man_->setCameraInfo(ci);
 }
 
-
-
-
-
-void MonoCamera::time_compare()
+//time_compare compares the system time with time stamp and if its greater than 3 sec it assigns OFF status
+void MonoCamera::updateCameraStatus()
 {
-    ros::Duration img_time_difference=ros::Time::now()-last_time;
-    ros::Duration three_seconds(3.0);
-    if ((img_time_difference>three_seconds) && flag==cav_msgs::DriverStatus::OPERATIONAL)
+    ros::Duration img_time_difference=ros::Time::now()-last_time_;
+    ros::Duration three_seconds(2.0);
+    if ((img_time_difference>three_seconds) && cam_status==cav_msgs::DriverStatus::OPERATIONAL)
 {
-    flag=cav_msgs::DriverStatus::OFF;
+    cam_status=cav_msgs::DriverStatus::OFF;
 }
 }
-
 };
 
 

@@ -52,13 +52,13 @@ class MonoCamera {
  public:
   MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
- void time_compare();
- int flag;
+ void updateCameraStatus();
+ short int cam_status;
  private:
 
   AvtVimbaApi api_;
   AvtVimbaCamera cam_;
-  ros::Time last_time;
+  ros::Time last_time_;
   // diagnostic_updater::Updater updater_;
   // diagnostic_updater::TopicDiagnostic* pub_freq_;
 
