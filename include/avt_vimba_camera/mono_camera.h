@@ -53,7 +53,7 @@ class MonoCamera {
   MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
  void updateCameraStatus();
- short int cam_status;
+ unsigned char cam_status;
  private:
 
   AvtVimbaApi api_;
@@ -69,7 +69,6 @@ class MonoCamera {
   std::string guid_;
   std::string camera_info_url_;
   bool show_debug_prints_;
-
 
   image_transport::ImageTransport it_;
   // ROS Camera publisher

@@ -1,3 +1,19 @@
+/*
+ * Copyright (C) 2019 LEIDOS.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+
 #include <ros/ros.h>
 #include <avt_vimba_camera/mono_camera.h>
 #include <cav_msgs/SystemAlert.h>
@@ -5,6 +21,7 @@
 #include <ros/callback_queue.h>
 #include <boost/thread.hpp>
 
+namespace avt_vimba_camera {
 class StatusCamera
 {
     cav_msgs::DriverStatus status_;
@@ -14,7 +31,7 @@ class StatusCamera
     ros::NodeHandle nhp_;
     boost::thread* cam_thread_;
 public:
-    short int status_cam;
+    unsigned char status_cam;
     //Constructor
     StatusCamera(ros::NodeHandle,ros::NodeHandle);
     //Destructor to interrupt the cam_thread
@@ -24,4 +41,5 @@ public:
     void pre_camera();
     void post_camera();
 };
+}
 

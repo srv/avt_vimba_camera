@@ -66,9 +66,7 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
-  cam_status=cav_msgs::DriverStatus::OFF;
-
- }
+  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
    cam_status=cav_msgs::DriverStatus::OPERATIONAL;
@@ -171,11 +169,11 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
 void MonoCamera::updateCameraStatus()
 {
     ros::Duration img_time_difference=ros::Time::now()-last_time_;
-    ros::Duration three_seconds(2.0);
-    if ((img_time_difference>three_seconds) && cam_status==cav_msgs::DriverStatus::OPERATIONAL)
-{
+    //Greater than 2 seconds of non-response is the minimum time required to classify as not connected
+  if ((img_time_difference>ros::Duration(2.0)) && cam_status==cav_msgs::DriverStatus::OPERATIONAL)
+    {
     cam_status=cav_msgs::DriverStatus::OFF;
-}
+    }
 }
 };
 
