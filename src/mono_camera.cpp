@@ -70,6 +70,7 @@ MonoCamera::~MonoCamera(void) {
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
    cam_status=cav_msgs::DriverStatus::OPERATIONAL;
+   ROS_INFO_STREAM("cam"<<cam_status);
    last_time_=ros::Time::now();
   ros::Time ros_time = ros::Time::now();
   if (pub_.getNumSubscribers() > 0) {

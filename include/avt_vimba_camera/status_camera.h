@@ -31,13 +31,14 @@ class StatusCamera
     ros::NodeHandle nhp_;
     boost::thread* cam_thread_;
 public:
-    unsigned char status_cam;
+    uint8_t status_cam;
     //Constructor
     StatusCamera(ros::NodeHandle,ros::NodeHandle);
     //Destructor to interrupt the cam_thread
     ~StatusCamera();
     void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);
     void publish_status();
+    void publish_off_status();
     void pre_camera();
     void post_camera();
 };

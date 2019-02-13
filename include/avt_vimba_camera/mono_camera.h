@@ -52,9 +52,9 @@ class MonoCamera {
  public:
   MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
- void updateCameraStatus();
- unsigned char cam_status;
- private:
+  void updateCameraStatus();
+  uint8_t cam_status;
+  private:
 
   AvtVimbaApi api_;
   AvtVimbaCamera cam_;
