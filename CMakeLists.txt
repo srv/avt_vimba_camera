@@ -118,12 +118,18 @@ add_executable(sync_node
 
 add_dependencies_and_linkings(sync_node)
 
+add_library(avt_vimba_camera_lib
+  src/status_camera.cpp
+)
+add_dependencies(avt_vimba_camera_lib ${catkin_EXPORTED_TARGETS})
+
 add_library(avt_camera_nodelets
   src/nodes/mono_camera_nodelet.cpp
   src/nodes/stereo_camera_nodelet.cpp
   src/stereo_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp)
+
 add_dependencies_and_linkings(avt_camera_nodelets)
 
 #############
@@ -185,5 +191,6 @@ elseif("${ARCH}" STREQUAL armv8)
 endif()
 #Test
 ## gtest C++ Framework
-#catkin_add_gtest(${PROJECT_NAME}-test src/status_mako_camera_test.cpp)
-#target_link_libraries(${PROJECT_NAME}-test avt_vimba_camera)
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+catkin_add_gtest(${PROJECT_NAME}-test test/status_mako_camera_test.cpp)
+target_link_libraries(${PROJECT_NAME}-test avt_vimba_camera_lib ${catkin_LIBRARIES})

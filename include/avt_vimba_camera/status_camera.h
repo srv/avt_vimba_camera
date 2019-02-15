@@ -24,22 +24,18 @@
 namespace avt_vimba_camera {
 class StatusCamera
 {
-    cav_msgs::DriverStatus status_;
     ros::Publisher status_pub_ ;
-    ros::Subscriber alert_sub_;
-    ros::NodeHandle nh_;
-    ros::NodeHandle nhp_;
     boost::thread* cam_thread_;
+
 public:
     uint8_t status_cam;
-    //Constructor
-    StatusCamera(ros::NodeHandle);
+    cav_msgs::DriverStatus status_;
     //Destructor to interrupt the cam_thread
     ~StatusCamera();
     void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);
     void publish_status();
     void publish_off_status();
-    void pre_camera();
+    void pre_camera(ros::Publisher status_pub);
     void post_camera();
 };
 }

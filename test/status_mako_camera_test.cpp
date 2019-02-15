@@ -14,24 +14,25 @@
  * the License.
  */
 
-#include <avt_vimba_camera/status_camera.h>
 #include <gtest/gtest.h>
-namespace avt_vimba_camera {
+#include <avt_vimba_camera/status_camera.h>
 
 TEST(MakoCameraTest, DriverStatus)
 {
-
-}
-
-TEST(MakoCameraTest, SystemAlertStatus)
-{
-avt_vimba_camera::StatusCamera hc;
-EXPECT_EQ(cav_msgs::SystemAlert::FATAL,hc.alertCallback(cav_msgs::SystemAlert::FATAL));
+    avt_vimba_camera::StatusCamera hc;
+    hc.status_cam = cav_msgs::DriverStatus::OFF;
+    hc.publish_status();
+    EXPECT_EQ(cav_msgs::DriverStatus::OFF, hc.status_.status);
+    hc.status_cam = cav_msgs::DriverStatus::OPERATIONAL;
+    hc.publish_status();
+    EXPECT_EQ(cav_msgs::DriverStatus::OPERATIONAL, hc.status_.status);
+    hc.status_cam = cav_msgs::DriverStatus::FAULT;
+    hc.publish_status();
+    EXPECT_EQ(cav_msgs::DriverStatus::FAULT, hc.status_.status);
 }
 
 // Run all the tests
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
-}
 }
