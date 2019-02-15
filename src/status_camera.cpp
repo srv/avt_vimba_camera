@@ -17,12 +17,10 @@
 #include <avt_vimba_camera/status_camera.h>
 
 namespace avt_vimba_camera {
-StatusCamera::StatusCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
+StatusCamera::StatusCamera(ros::NodeHandle nh_, ros::NodeHandle nhp_)
 {
     status_.name=ros::this_node::getName();
     status_.camera=true;
-    nh_=nh;
-    nhp_=nhp;
     //Publisher object for driver_discovery
     status_pub_ = nh_.advertise<cav_msgs::DriverStatus>("driver_discovery", 1);
 }
@@ -74,7 +72,6 @@ void StatusCamera::publish_off_status()
 void StatusCamera::pre_camera()
 {
     cam_thread_ = new boost::thread(boost::bind(&StatusCamera::publish_off_status,this));
-    //cam_thread_->join();
     alert_sub_ = nh_.subscribe<cav_msgs::SystemAlert>("system_alert",10,&StatusCamera::alertCallback, this);
 }
 //Interrupt the cam_thread
