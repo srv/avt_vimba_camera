@@ -30,7 +30,6 @@ StatusCamera::StatusCamera(ros::NodeHandle nh, ros::NodeHandle nhp)
 StatusCamera::~StatusCamera()
  {
     cam_thread_->interrupt();
-   // cam_thread_->interruption_requested();
  }
 //System alert function definition
 void StatusCamera::alertCallback(const cav_msgs::SystemAlertConstPtr &msg)
@@ -82,7 +81,5 @@ void StatusCamera::pre_camera()
 void StatusCamera::post_camera()
 {
     cam_thread_->interrupt();
- //   cam_thread_->interruption_requested();
-
 }
 }

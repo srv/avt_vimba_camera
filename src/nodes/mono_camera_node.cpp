@@ -2,7 +2,6 @@
 #include <avt_vimba_camera/mono_camera.h>
 #include <avt_vimba_camera/status_camera.h>
 
-
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "mono_camera_node");

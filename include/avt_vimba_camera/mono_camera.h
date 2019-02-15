@@ -74,8 +74,6 @@ class MonoCamera {
   // ROS Camera publisher
   image_transport::CameraPublisher pub_;
 
-
-
   // sensor_msgs::CameraInfo left_info_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> info_man_;
 
