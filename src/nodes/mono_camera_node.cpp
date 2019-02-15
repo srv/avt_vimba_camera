@@ -8,7 +8,7 @@ int main(int argc, char** argv)
   ros::NodeHandle nh;
   ros::NodeHandle nhp("~");
   ros::Rate loop_rate(19); //Camera max frame rate is 19Hz
-  avt_vimba_camera::StatusCamera hc(nh,nhp);
+  avt_vimba_camera::StatusCamera hc(nh);
   hc.pre_camera();
   avt_vimba_camera::MonoCamera mc(nh,nhp);
   hc.post_camera();

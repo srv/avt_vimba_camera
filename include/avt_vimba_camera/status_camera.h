@@ -33,7 +33,7 @@ class StatusCamera
 public:
     uint8_t status_cam;
     //Constructor
-    StatusCamera(ros::NodeHandle,ros::NodeHandle);
+    StatusCamera(ros::NodeHandle);
     //Destructor to interrupt the cam_thread
     ~StatusCamera();
     void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);

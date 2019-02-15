@@ -183,3 +183,7 @@ elseif("${ARCH}" STREQUAL armv8)
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
 endif()
+#Test
+## gtest C++ Framework
+#catkin_add_gtest(${PROJECT_NAME}-test src/status_mako_camera_test.cpp)
+#target_link_libraries(${PROJECT_NAME}-test avt_vimba_camera)

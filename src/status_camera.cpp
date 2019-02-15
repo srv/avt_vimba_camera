@@ -17,7 +17,7 @@
 #include <avt_vimba_camera/status_camera.h>
 
 namespace avt_vimba_camera {
-StatusCamera::StatusCamera(ros::NodeHandle nh_, ros::NodeHandle nhp_)
+StatusCamera::StatusCamera(ros::NodeHandle nh_)
 {
     status_.name=ros::this_node::getName();
     status_.camera=true;
