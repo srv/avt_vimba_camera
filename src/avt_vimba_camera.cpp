@@ -952,21 +952,22 @@ void AvtVimbaCamera::updateGainConfig(Config& config) {
   if (config.gain_auto_min != config_.gain_auto_min || on_init_) {
     changed = true;
     setFeatureValue("GainAutoMin",
-                    static_cast<VmbInt64_t>(config.gain_auto_min));
+                    static_cast<float>(config.gain_auto_min));
   }
   if (config.gain_auto_outliers != config_.gain_auto_outliers || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoMin",
+    setFeatureValue("GainAutoOutliers",
                     static_cast<VmbInt64_t>(config.gain_auto_outliers));
   }
   if (config.gain_auto_rate != config_.gain_auto_rate || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoOutliers",
+    setFeatureValue("GainAutoRate",
                     static_cast<VmbInt64_t>(config.gain_auto_rate));
   }
   if (config.gain_auto_target != config_.gain_auto_target || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoRate", static_cast<VmbInt64_t>(config.gain_auto_target));
+    setFeatureValue("GainAutoTarget",
+                    static_cast<VmbInt64_t>(config.gain_auto_target));
   }
   if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New Gain config (" << config.frame_id << ") : "
