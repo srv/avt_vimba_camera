@@ -1,0 +1,31 @@
+<launch>
+	<!-- Directory of Parameter Files -->
+  <arg name="CARMA_DIR" default="/opt/carma/src/CARMAPlatform/carmajava" doc="The path of the package directory"/>
+  <arg name="PARAM_DIR" default="$(arg CARMA_DIR)/launch/params" doc="Directory of yaml parameter files"/>
+	<arg name="URDF_FILE" default="/opt/carma/src/CARMAPlatform/configurations/cadillac_srx_2013/saxton_cav.urdf" doc="Path to the vehicle's URDF file"/>
+
+	<include file="$(find avt_vimba_camera)/launch/mono_camera.launch"/>
+
+	<include file="$(find mobileye_560_660)/launch/mobileye_560_660.launch">
+		<arg name="use_kvaser" value="true" />
+		<arg name="kvaser_hardware_id" value="51127" />
+	</include>
+
+	<include file="$(find pinpoint)/launch/pinpoint.launch"/>
+
+	<!-- TF2 Setup Initial Static Transforms -->
+	<!-- Vehicle Transforms -->
+	<param name="robot_description" textfile="$(arg URDF_FILE)"/>
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+	<!-- Record Rosbag of all topics excluding /rosout and CAN messages since they may contain sensetive data -->
+	<node pkg="rosbag" type="record" name="rosbag_node"
+		args="record -o /opt/carma/logs/ /as_tx/lane_markers /as_tx/lane_models /as_tx/object_markers /as_tx/objects /position/nav_sat_fix /camera/image_raw/compressed"
+	/>
+<!-- -rosrun image_view image_view image:=/camera/image_raw compressed -->
+<!-- rosrun image_view image_view image:=/camera/image_raw theora -->
+	<!-- <node name="image_viewer" pkg="image_view" type="image_view">
+		<param name="image" value="/camera/image_raw"/>
+	</node> -->
+
+</launch>
