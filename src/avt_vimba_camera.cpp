@@ -1097,11 +1097,19 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   width    = right_x  - offset_x;
   height   = bottom_y - offset_y;
 
-  config.width  = width/binning_or_decimation_x;
-  config.height = height/binning_or_decimation_y;
+  config.roi_width  = width/binning_or_decimation_x;
+  config.roi_height = height/binning_or_decimation_y;
   config.roi_offset_x = offset_x/binning_or_decimation_x;
   config.roi_offset_y = offset_y/binning_or_decimation_y;
 
+  if (config.roi_width != config_.roi_width || on_init_) {
+    changed = true;
+    setFeatureValue("Width", static_cast<VmbInt64_t>(config.roi_width));
+  }
+  if (config.roi_height != config_.roi_height || on_init_) {
+    changed = true;
+    setFeatureValue("Height", static_cast<VmbInt64_t>(config.roi_height));
+  }
   if (config.roi_offset_x != config_.roi_offset_x || on_init_) {
     changed = true;
     setFeatureValue("OffsetX", static_cast<VmbInt64_t>(config.roi_offset_x));
@@ -1109,14 +1117,6 @@ void AvtVimbaCamera::updateROIConfig(Config& config) {
   if (config.roi_offset_y != config_.roi_offset_y || on_init_) {
     changed = true;
     setFeatureValue("OffsetY", static_cast<VmbInt64_t>(config.roi_offset_y));
-  }
-  if (config.width != config_.width || on_init_) {
-    changed = true;
-    setFeatureValue("Width", static_cast<VmbInt64_t>(config.width));
-  }
-  if (config.height != config_.height || on_init_) {
-    changed = true;
-    setFeatureValue("Height", static_cast<VmbInt64_t>(config.height));
   }
 
   if(changed && show_debug_prints_){
