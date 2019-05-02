@@ -60,7 +60,7 @@
 			<param name="gain_auto" value="Continuous"/>
 			<param name="whitebalance_auto" value="Continuous"/>
 
-			<param name="binning_x" value="2"/>
+			<param name="binning_x" value="1"/>
 			<param name="binning_y" value="1"/>
 			<param name="decimation_x" value="1"/>
 			<param name="decimation_y" value="1"/>
