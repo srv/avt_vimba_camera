@@ -1,3 +1,26 @@
+<!--
+  Copyright (C) 2018-2019 LEIDOS.
+
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  use this file except in compliance with the License. You may obtain a copy of
+  the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  License for the specific language governing permissions and limitations under
+  the License.
+-->
+<!--
+  mobileye_eval.launch
+
+  This launch file is can be used to conduct testing of the Mobileye camera. 
+  This will launch the mobileye driver, a URDF file for transforms, the pinpoint driver, and the Vimba driver.
+  The output topics will be recorded in a rosbag
+-->
+
 <launch>
 	<!-- Directory of Parameter Files -->
   <arg name="CARMA_DIR" default="/opt/carma/src/CARMAPlatform/carmajava" doc="The path of the package directory"/>
@@ -22,10 +45,13 @@
 	<node pkg="rosbag" type="record" name="rosbag_node"
 		args="record -o /opt/carma/logs/ /as_tx/lane_markers /as_tx/lane_models /as_tx/object_markers /as_tx/objects /position/nav_sat_fix /camera/image_raw/compressed"
 	/>
-<!-- -rosrun image_view image_view image:=/camera/image_raw compressed -->
-<!-- rosrun image_view image_view image:=/camera/image_raw theora -->
-	<!-- <node name="image_viewer" pkg="image_view" type="image_view">
-		<param name="image" value="/camera/image_raw"/>
-	</node> -->
+
+	<!-- View camera feed for some reason this doesn't always work from the launch file and it must be done using rosrun-->
+		<!-- <node name="image_viewer" pkg="image_view" type="image_view">
+					<param name="image" value="/camera/image_raw"/>
+				</node> 
+		-->
+		<!-- -rosrun image_view image_view image:=/camera/image_raw compressed -->
+		<!-- rosrun image_view image_view image:=/camera/image_raw theora -->
 
 </launch>

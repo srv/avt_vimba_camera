@@ -1,3 +1,4 @@
+# Calibration file for the spare mobileye camera at STOL
 image_width: 2064
 image_height: 1544
 camera_name: left_optical
