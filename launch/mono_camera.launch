@@ -65,14 +65,9 @@
 			<param name="decimation_x" value="1"/>
 			<param name="decimation_y" value="1"/>
 			<param name="x_offset" value="0"/>
-			<param name="y_offset" value="400"/>
-			<param name="width" value="2064"/>
-			<param name="height" value="720"/>
-
-			<!-- <param name="x_offset" value="0"/>
 			<param name="y_offset" value="0"/>
-			<param name="width" value="1920"/>
-			<param name="height" value="1440"/> -->
+			<param name="width" value="2064"/>
+			<param name="height" value="1440"/>
 
 			<param name="stream_bytes_per_second" value="45000000"/>
 		</node>
