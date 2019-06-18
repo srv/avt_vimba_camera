@@ -15,30 +15,66 @@
 #  the License.
 
 USERNAME=usdotfhwastol
-IMAGE=carma-avt-vimba-driver
-
-echo ""
-echo "##### CARMAAvtVimbaDriver Docker Image Build Script #####"
-echo ""
 
 cd "$(dirname "$0")"
-cd ..
+IMAGE=$(./get-package-name.sh | tr '[:upper:]' '[:lower:]')
 
-if [[ -z "$1" ]]; then
-    TAG=`cat package.xml | grep '<version>' | awk -F '[<>]' '/version/{print $3}'`
-else
-    TAG="$1"
+echo ""
+echo "##### $IMAGE Docker Image Build Script #####"
+echo ""
+
+while [[ $# -gt 0 ]]; do
+    arg="$1"
+    case $arg in
+        -v|--version)
+            COMPONENT_VERSION_STRING="$2"
+            shift
+            shift
+            ;;
+        --system-release)
+            SYSTEM_RELEASE=true
+            shift
+            ;;
+        -p|--push)
+            PUSH=true
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$COMPONENT_VERSION_STRING" ]]; then
+    COMPONENT_VERSION_STRING=$("./get-component-version.sh")
 fi
 
-echo "Building docker image for CARMAAvtVimbaDriver..."
-echo "Final image name: $USERNAME/$IMAGE:$TAG"
+echo "Building docker image for $IMAGE version: $COMPONENT_VERSION_STRING"
+echo "Final image name: $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING"
 
-docker build --no-cache -t $USERNAME/$IMAGE:$TAG \
-    --build-arg VERSION="$TAG" \
+cd ..
+docker build --no-cache -t $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING \
+    --build-arg VERSION="$COMPONENT_VERSION_STRING" \
     --build-arg VCS_REF=`git rev-parse --short HEAD` \
     --build-arg BUILD_DATE=`date -u +”%Y-%m-%dT%H:%M:%SZ”` .
 
-docker tag $USERNAME/$IMAGE:$TAG $USERNAME/$IMAGE:latest
+TAGS=()
+TAGS+=("$USERNAME/$IMAGE:$COMPONENT_VERSION_STRING")
+
+docker tag $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING $USERNAME/$IMAGE:latest
+TAGS+=("$USERNAME/$IMAGE:latest")
+
+echo "Tagged $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING as $USERNAME/$IMAGE:latest"
+
+if [ "$SYSTEM_RELEASE" = true ]; then
+    SYSTEM_VERSION_STRING=$("./get-system-version.sh")
+    docker tag $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING $USERNAME/$IMAGE:$SYSTEM_VERSION_STRING
+    echo "Tagged $USERNAME/$IMAGE:$COMPONENT_VERSION_STRING as $USERNAME/$IMAGE:$SYSTEM_VERSION_STRING"
+    TAGS+=("$USERNAME/$IMAGE:$SYSTEM_VERSION_STRING")
+fi
+
+if [ "$PUSH" = true ]; then
+    for tag in $TAGS; do
+        docker push "${tag}"
+    done
+fi
 
 echo ""
-echo "##### CARMAAvtVimbaDriver Docker Image Build Done! #####"
+echo "##### $IMAGE Docker Image Build Done! #####"
