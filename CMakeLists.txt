@@ -3,6 +3,7 @@ project(avt_vimba_camera)
 
 find_package(catkin REQUIRED COMPONENTS
   #libvimba
+  cav_msgs
   camera_info_manager
   diagnostic_updater
   dynamic_reconfigure
@@ -28,8 +29,9 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
+  #LIBRARIES ${PROJECT_NAME}
   INCLUDE_DIRS include
-  CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera
+  CATKIN_DEPENDS camera_info_manager diagnostic_updater dynamic_reconfigure image_geometry image_transport roscpp sensor_msgs std_msgs polled_camera cav_msgs
 )
 
 ###########
@@ -58,6 +60,7 @@ function(add_dependencies_and_linkings arg)
   add_dependencies(${arg}
     ${PROJECT_NAME}_gencfg
     #${libvimba_EXPORTED_TARGETS}
+    ${catkin_EXPORTED_TARGETS}
   )
 
   if("${ARCH}" STREQUAL i386)
@@ -94,7 +97,8 @@ add_executable(mono_camera_node
   src/mono_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp
-)
+  src/status_camera.cpp
+    )
 
 add_dependencies_and_linkings(mono_camera_node)
 
@@ -103,16 +107,21 @@ add_executable(stereo_camera_node
   src/stereo_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp
-)
+  )
 
 add_dependencies_and_linkings(stereo_camera_node)
 
 add_executable(sync_node
   src/nodes/sync_node.cpp
   src/sync.cpp
-)
+  )
 
 add_dependencies_and_linkings(sync_node)
+
+add_library(avt_vimba_camera_lib
+  src/status_camera.cpp
+)
+add_dependencies(avt_vimba_camera_lib ${catkin_EXPORTED_TARGETS})
 
 add_library(avt_camera_nodelets
   src/nodes/mono_camera_nodelet.cpp
@@ -120,6 +129,7 @@ add_library(avt_camera_nodelets
   src/stereo_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp)
+
 add_dependencies_and_linkings(avt_camera_nodelets)
 
 #############
@@ -143,7 +153,7 @@ install(DIRECTORY include
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
   plugins.xml
-  launch/mono_camera.launch
+  #launch/mono_camera.launch
   launch/mono_camera_nodelet.launch
   launch/stereo_camera_one_node.launch
   launch/stereo_camera_two_nodes.launch
@@ -179,3 +189,8 @@ elseif("${ARCH}" STREQUAL armv8)
     DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   )
 endif()
+#Test
+## gtest C++ Framework
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+catkin_add_gtest(${PROJECT_NAME}-test test/status_mako_camera_test.cpp)
+target_link_libraries(${PROJECT_NAME}-test avt_vimba_camera_lib ${catkin_LIBRARIES})
