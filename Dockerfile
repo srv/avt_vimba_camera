@@ -12,14 +12,14 @@
 #  License for the specific language governing permissions and limitations under
 #  the License.
 
-FROM usdotfhwastol/carma-base:2.8.3 as setup
+FROM usdotfhwastol/carma-base:3.0.0 as setup
 
 RUN mkdir ~/src
-COPY --chown=carma . /home/carma/src/
-RUN ~/src/docker/checkout.sh
-RUN ~/src/docker/install.sh
+COPY --chown=carma . /home/carma/src/CARMAAvtVimbaDriver
+RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.sh
+RUN ~/src/CARMAAvtVimbaDriver/docker/install.sh
 
-FROM usdotfhwastol/carma-base:2.8.3
+FROM usdotfhwastol/carma-base:3.0.0
 
 ARG BUILD_DATE="NULL"
 ARG VERSION="NULL"
@@ -35,7 +35,7 @@ LABEL org.label-schema.vcs-url="https://github.com/usdot-fhwa-stol/CARMAAvtVimba
 LABEL org.label-schema.vcs-ref=${VCS_REF}
 LABEL org.label-schema.build-date=${BUILD_DATE}
 
-COPY --from=setup /home/carma/install /opt/carma/app/bin
-RUN sudo chmod -R +x /opt/carma/app/bin
+COPY --from=setup /home/carma/install /opt/carma/install
+RUN sudo chmod -R +x /opt/carma/install
 
-CMD  [ "wait-for-it.sh", "localhost:11311", "--", "roslaunch", "avt_vimba_camera", "mono_camera.launch", "remap_ns:=/saxton_cav/drivers" ]
+CMD  [ "wait-for-it.sh", "localhost:11311", "--", "roslaunch", "avt_vimba_camera", "mono_camera.launch"]
