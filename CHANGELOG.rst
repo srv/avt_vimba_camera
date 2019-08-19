@@ -2,6 +2,19 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+Forthcoming
+-----------
+* Merge pull request `#35 <https://github.com/astuff/avt_vimba_camera/issues/35>`_ from willcbaker/feature/nodelet
+  Feature/nodelet
+* Update nodelet launch files
+* Add nodelet
+* Fix `#31 <https://github.com/astuff/avt_vimba_camera/issues/31>`_
+* Merge pull request `#30 <https://github.com/astuff/avt_vimba_camera/issues/30>`_ from chewwt/armv8
+  add support for armv8
+* add support for armv8
+* Change frame observer to shared ptr
+* Contributors: Miquel Massot, Will Baker, ruth
+
 0.0.10 (2017-08-16)
 -------------------
 * Merge pull request `#26 <https://github.com/srv/avt_vimba_camera/issues/26>`_ from 130s/k/add_ci
