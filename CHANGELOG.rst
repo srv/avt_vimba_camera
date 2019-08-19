@@ -2,8 +2,8 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.0.11 (2019-08-19)
+-------------------
 * Merge pull request `#35 <https://github.com/astuff/avt_vimba_camera/issues/35>`_ from willcbaker/feature/nodelet
   Feature/nodelet
 * Update nodelet launch files
