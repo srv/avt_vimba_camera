@@ -52,7 +52,7 @@ jobs:
           name: Pull Deps
           command: |
             source ${INIT_ENV}
-            ./CARMAAvtVimbaDriver/docker/checkout.sh ${PWD}
+            ./src/CARMAAvtVimbaDriver/docker/checkout.sh ${PWD}
       - run:
           name: Build Driver
           command: |
