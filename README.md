@@ -1,4 +1,4 @@
-# CARMAArtVimbaDriver
+# CARMAAvtVimbaDriver
 This is a fork of a third party driver developed for video camera operation.  It is modified for CARMA-specific use.  The master repo, located [here](https://github.com/srv/avt_vimba_camera), had no readme for its home page, so this readme is added to the fork to describe how this repo fits into the rest of the CARMA environment.
 
 # CARMAPlatform
