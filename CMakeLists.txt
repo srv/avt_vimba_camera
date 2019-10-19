@@ -55,6 +55,8 @@ elseif(COMPILER_SUPPORTS_CXX0X)
 else()
   message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 function(add_dependencies_and_linkings arg)
   add_dependencies(${arg}
