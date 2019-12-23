@@ -24,4 +24,4 @@ if [[ -n ${1} ]]; then
       dir=${1}
 fi
 
-git clone https://github.com/usdot-fhwa-stol/CARMAMsgs.git ${dir}/src/CARMAMsgs --branch develop --depth 1
+git clone https://github.com/usdot-fhwa-stol/CARMAMsgs.git ${dir}/src/CARMAMsgs --branch CARMAMsgs_1.1.0 --depth 1
