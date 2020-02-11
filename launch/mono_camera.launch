@@ -1,4 +1,5 @@
 <launch>
+	
 	<arg name="guid" default=""/>
  	<arg name="ip" default="192.168.88.90"/>
   	<arg name="camera_info_url" default="file://$(find avt_vimba_camera)/calibrations/calibration_50-0536911040.yaml"/>
