@@ -5,7 +5,6 @@ src/VimbaCPP/
 lib/
 bin/
 build/
-docs/
 
 # Auto generated code
 cfg/cpp/
