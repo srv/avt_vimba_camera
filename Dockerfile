@@ -16,7 +16,7 @@ FROM usdotfhwastol/carma-base:3.7.0 as setup
 
 RUN mkdir ~/src
 COPY --chown=carma . /home/carma/src/CARMAAvtVimbaDriver
-RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.sh
+RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.bash
 RUN ~/src/CARMAAvtVimbaDriver/docker/install.sh
 
 FROM usdotfhwastol/carma-base:3.7.0
