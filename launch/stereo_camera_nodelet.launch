@@ -22,5 +22,4 @@
     <param name="left_camera_info_url" value="$(arg left_camera_info_url)"/>
     <param name="right_camera_info_url" value="$(arg right_camera_info_url)"/>
   </node>
-
 </launch>

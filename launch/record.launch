@@ -1,8 +1,10 @@
 <launch>
-	<arg name="stereo" default="stereo"/>
-	<arg name="image" default="image_color"/>
-	<arg name="prefix" default="test"/>
+  <arg name="stereo" default="stereo"/>
+  <arg name="image" default="image_color"/>
+  <arg name="prefix" default="test"/>
 
-	<node pkg="rosbag" type="record" name="record" args="/$(arg stereo)/left/$(arg image) /$(arg stereo)/right/$(arg image) /$(arg stereo)/left/camera_info /$(arg stereo)/right/camera_info -o $(arg prefix)" output="screen">
-	</node>
+  <node pkg="rosbag" type="record" name="record"
+    args="/$(arg stereo)/left/$(arg image) /$(arg stereo)/right/$(arg image) /$(arg stereo)/left/camera_info /$(arg stereo)/right/camera_info -o $(arg prefix)"
+    output="screen"
+  />
 </launch>
