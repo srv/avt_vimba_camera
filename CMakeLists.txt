@@ -117,6 +117,7 @@ add_dependencies_and_linkings(sync_node)
 add_library(avt_camera_nodelets
   src/nodes/mono_camera_nodelet.cpp
   src/nodes/stereo_camera_nodelet.cpp
+  src/mono_camera.cpp
   src/stereo_camera.cpp
   src/avt_vimba_camera.cpp
   src/frame_observer.cpp)
