@@ -2,6 +2,20 @@
 Changelog for package avt_vimba_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.0.12 (2020-06-05)
+-------------------
+* Fix MonoCamera nodelet (`#16 <https://github.com/astuff/avt_vimba_camera/issues/16>`_)
+* Launch File Updates (`#13 <https://github.com/astuff/avt_vimba_camera/issues/13>`_)
+
+  * Standardize launch file formatting, remove commented code
+  * Provide args for all parameters
+  * Launch file for Mako G-319
+
+* Remove duplicated launch file installs (`#15 <https://github.com/astuff/avt_vimba_camera/issues/15>`_)
+* Brief README (`#10 <https://github.com/astuff/avt_vimba_camera/issues/10>`_)
+* Add more pixelformats, thanks to @jmoreau-hds (`#3 <https://github.com/astuff/avt_vimba_camera/issues/3>`_)
+* Contributors: icolwell-as
+
 0.0.11 (2019-08-19)
 -------------------
 * Merge pull request `#35 <https://github.com/astuff/avt_vimba_camera/issues/35>`_ from willcbaker/feature/nodelet
@@ -43,9 +57,11 @@ Changelog for package avt_vimba_camera
 * Change variable scope
 * Fix `#15 <https://github.com/srv/avt_vimba_camera/issues/15>`_: do not depend on turbot_configurations
 * Merge pull request `#14 <https://github.com/srv/avt_vimba_camera/issues/14>`_ from josepqp/kinetic
-* 1) Added ARM 32 bits libraries
-  2) Modified CMakeList.txt to compile with ARM 32 bits
-  3) Added Iris Parameter
+
+  * Added ARM 32 bits libraries
+  * Modified CMakeList.txt to compile with ARM 32 bits
+  * Added Iris Parameter
+
 * kinetization
 * Fix sync problems after camera tests
 * Add a sync timer
