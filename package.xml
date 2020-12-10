@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<package>
+<package format = "3">
   <name>avt_vimba_camera</name>
   <version>1.0.0</version>
   <description>Wrapper of the Allied Vision Technologies (AVT) VIMBA Ethernet and Firewire SDK.</description>
@@ -14,34 +14,23 @@
   <author>Allied Vision Technologies</author>
 
   <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>camera_info_manager</build_depend>
-  <build_depend>diagnostic_updater</build_depend>
-  <build_depend>dynamic_reconfigure</build_depend>
-  <build_depend>image_geometry</build_depend>
-  <build_depend>image_transport</build_depend>
-  <build_depend>message_filters</build_depend>
-  <build_depend>roscpp</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>std_msgs</build_depend>
-  <build_depend>polled_camera</build_depend>
-  <build_depend>nodelet</build_depend>
-  <build_depend>cav_msgs</build_depend>
-  <!--build_depend>libvimba</build_depend-->
-  <run_depend>camera_info_manager</run_depend>
-  <run_depend>diagnostic_updater</run_depend>
-  <run_depend>dynamic_reconfigure</run_depend>
-  <run_depend>image_geometry</run_depend>
-  <run_depend>image_transport</run_depend>
-  <run_depend>message_filters</run_depend>
-  <run_depend>roscpp</run_depend>
-  <run_depend>sensor_msgs</run_depend>
-  <run_depend>std_msgs</run_depend>
-  <run_depend>polled_camera</run_depend>
-  <run_depend>nodelet</run_depend>
-  <run_depend>cav_msgs</run_depend>
+  <depend>camera_info_manager</depend>
+  <depend>diagnostic_updater</depend>
+  <depend>dynamic_reconfigure</depend>
+  <depend>image_geometry</depend>
+  <depend>image_transport</depend>
+  <depend>message_filters</depend>
+  <depend>roscpp</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>polled_camera</depend>
+  <depend>nodelet</depend>
+  <depend>cav_msgs</depend>
+  <!--depend>libvimba</depend-->
+  
 
-  <run_depend>image_proc</run_depend>
-  <run_depend>stereo_image_proc</run_depend>
+  <exec_depend>image_proc</exec_depend>
+  <exec_depend>stereo_image_proc</exec_depend>
 
   <!--run_depend>libvimba</run_depend-->
   <export>

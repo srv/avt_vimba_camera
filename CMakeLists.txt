@@ -61,6 +61,7 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 function(add_dependencies_and_linkings arg)
   add_dependencies(${arg}
     ${PROJECT_NAME}_gencfg
+    ${${PROJECT_NAME}_EXPORTED_TARGETS}
     #${libvimba_EXPORTED_TARGETS}
     ${catkin_EXPORTED_TARGETS}
   )
@@ -123,7 +124,9 @@ add_dependencies_and_linkings(sync_node)
 add_library(avt_vimba_camera_lib
   src/status_camera.cpp
 )
-add_dependencies(avt_vimba_camera_lib ${catkin_EXPORTED_TARGETS})
+
+add_dependencies_and_linkings(avt_vimba_camera_lib)
+
 
 add_library(avt_camera_nodelets
   src/nodes/mono_camera_nodelet.cpp
