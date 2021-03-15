@@ -1,4 +1,4 @@
-#  Copyright (C) 2018-2020 LEIDOS.
+#  Copyright (C) 2018-2021 LEIDOS.
 # 
 #  Licensed under the Apache License, Version 2.0 (the "License"); you may not
 #  use this file except in compliance with the License. You may obtain a copy of
@@ -12,14 +12,14 @@
 #  License for the specific language governing permissions and limitations under
 #  the License.
 
-FROM usdotfhwastol/carma-base:carma-system-3.4.0 as setup
+FROM usdotfhwastol/carma-base:carma-system-3.5.0 as setup
 
 RUN mkdir ~/src
 COPY --chown=carma . /home/carma/src/CARMAAvtVimbaDriver
 RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.bash
 RUN ~/src/CARMAAvtVimbaDriver/docker/install.sh
 
-FROM usdotfhwastol/carma-base:carma-system-3.4.0
+FROM usdotfhwastol/carma-base:carma-system-3.5.0
 
 ARG BUILD_DATE="NULL"
 ARG VERSION="NULL"
