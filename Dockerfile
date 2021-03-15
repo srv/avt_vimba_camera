@@ -12,14 +12,14 @@
 #  License for the specific language governing permissions and limitations under
 #  the License.
 
-FROM usdotfhwastolcandidate/carma-base:vanden-plas as setup
+FROM usdotfhwastol/carma-base:carma-system-3.5.0 as setup
 
 RUN mkdir ~/src
 COPY --chown=carma . /home/carma/src/CARMAAvtVimbaDriver
 RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.bash
 RUN ~/src/CARMAAvtVimbaDriver/docker/install.sh
 
-FROM usdotfhwastolcandidate/carma-base:vanden-plas
+FROM usdotfhwastol/carma-base:carma-system-3.5.0
 
 ARG BUILD_DATE="NULL"
 ARG VERSION="NULL"
