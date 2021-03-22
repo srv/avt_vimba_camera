@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   polled_camera
   nodelet
+  avt_vimba_camera_wrapper
 )
 
 #Get architecture
@@ -136,6 +137,12 @@ add_library(avt_camera_nodelets
   src/frame_observer.cpp)
 
 add_dependencies_and_linkings(avt_camera_nodelets)
+
+add_executable(avt_vimba_camera_wrapper_node
+  src/main.cpp
+  src/avt_vimba_camera_wrapper.cpp
+add_dependencies(avt_vimba_camera_node ${catkin_EXPORTED_TARGETS})
+add_dependencies(avt_vimba_camera_wrapper_library ${catkin_EXPORTED_TARGETS})
 
 #############
 ## Install ##

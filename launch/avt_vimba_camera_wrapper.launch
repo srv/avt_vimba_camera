@@ -1,0 +1,5 @@
+<launch>
+    <node name="avt_vimba_camera_wrapper" pkg="avt_vimba_camera_wrapper" type="avt_vimba_camera_wrapper_node"/>
+    <remap from="image_processor/image_raw" to="/image_raw">
+
+</launch>

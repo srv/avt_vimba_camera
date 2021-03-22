@@ -30,6 +30,7 @@ class StatusCamera
 public:
     uint8_t status_cam;
     cav_msgs::DriverStatus status_;
+    StatusCamera();
     //Destructor to interrupt the cam_thread
     ~StatusCamera();
     void alertCallback(const cav_msgs::SystemAlertConstPtr &msg);

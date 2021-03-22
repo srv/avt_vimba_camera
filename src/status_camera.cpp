@@ -18,6 +18,8 @@
 
 namespace avt_vimba_camera {
 
+StatusCamera::StatusCamera(){}
+
 //Destructor to interrupt the cam_thread
 StatusCamera::~StatusCamera()
 {
