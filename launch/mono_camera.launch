@@ -70,6 +70,10 @@
 			<param name="decimation_y" value="1"/>
 			<param name="x_offset" value="0"/>
 			<param name="y_offset" value="0"/>
+
+			<!-- TODO: Recalibrate camera and lidar due to updated image dimensions 
+				 Issue #1241: https://github.com/usdot-fhwa-stol/carma-platform/issues/1241
+			-->
 			<param name="width" value="960"/>
 			<param name="height" value="720"/>
 
