@@ -36,9 +36,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$BRANCH" = "develop" ]]; then
-      git clone https://github.com/usdot-fhwa-stol/carma-msgs.git ~/src/carma-msgs --branch develop --depth 1
-      git clone https://github.com/usdot-fhwa-stol/carma-utils.git ~/src/carma-utils --branch develop --depth 1
+      git clone https://github.com/usdot-fhwa-stol/carma-msgs.git ~/src/carma-msgs --branch noetic/develop --depth 1
+      git clone https://github.com/usdot-fhwa-stol/carma-utils.git ~/src/carma-utils --branch noetic/develop --depth 1
 else
-      git clone https://github.com/usdot-fhwa-stol/carma-msgs.git ${dir}/src/carma-msgs --branch develop --depth 1
-      git clone https://github.com/usdot-fhwa-stol/carma-utils.git ${dir}/src/carma-utils --branch develop --depth 1
+      git clone https://github.com/usdot-fhwa-stol/carma-msgs.git ${dir}/src/carma-msgs --branch noetic/release --depth 1
+      git clone https://github.com/usdot-fhwa-stol/carma-utils.git ${dir}/src/carma-utils --branch noetic/release --depth 1
 fi
