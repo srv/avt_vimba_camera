@@ -8,9 +8,6 @@
 	<arg name="show_debug_prints" default="true"/>
  	
 	<group>
-		<group ns="camera">
-			<node name="image_proc" pkg="image_proc" type="image_proc"/>
-		</group>
 
 		<node name="camera" pkg="avt_vimba_camera" type="mono_camera_node" output="screen">
 			<param name="guid" value="$(arg guid)"/>
@@ -73,8 +70,12 @@
 			<param name="decimation_y" value="1"/>
 			<param name="x_offset" value="0"/>
 			<param name="y_offset" value="0"/>
-			<param name="width" value="2064"/>
-			<param name="height" value="1440"/>
+
+			<!-- TODO: Recalibrate camera and lidar due to updated image dimensions 
+				 Issue #1241: https://github.com/usdot-fhwa-stol/carma-platform/issues/1241
+			-->
+			<param name="width" value="960"/>
+			<param name="height" value="720"/>
 
 			<param name="stream_bytes_per_second" value="45000000"/>
 		</node>
