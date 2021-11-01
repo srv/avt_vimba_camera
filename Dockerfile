@@ -12,7 +12,7 @@
 #  License for the specific language governing permissions and limitations under
 #  the License.
 
-FROM usdotfhwastolcandidate/carma-base:elise as base
+FROM usdotfhwastoldev/carma-base:develop as base
 FROM base as setup
 
 RUN mkdir ~/src
