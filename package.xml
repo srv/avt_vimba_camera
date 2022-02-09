@@ -32,6 +32,8 @@
   <exec_depend>image_proc</exec_depend>
   <exec_depend>stereo_image_proc</exec_depend>
 
+  <build_depend>carma_cmake_common</build_depend>
+
   <!--run_depend>libvimba</run_depend-->
   <export>
     <nodelet plugin="${prefix}/plugins.xml" />
