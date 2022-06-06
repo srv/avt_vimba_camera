@@ -15,6 +15,11 @@
 FROM usdotfhwastoldev/carma-base:develop as base
 FROM base as setup
 
+ARG ROS1_PACKAGES=""
+ENV ROS1_PACKAGES=${ROS1_PACKAGES}
+ARG ROS2_PACKAGES=""
+ENV ROS2_PACKAGES=${ROS2_PACKAGES}
+
 RUN mkdir ~/src
 COPY --chown=carma . /home/carma/src/CARMAAvtVimbaDriver
 RUN ~/src/CARMAAvtVimbaDriver/docker/checkout.bash
