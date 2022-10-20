@@ -192,7 +192,8 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 
   if (trigger_source_int == Freerun   ||
       trigger_source_int == FixedRate ||
-      trigger_source_int == SyncIn1) {
+      trigger_source_int == SyncIn1   ||
+      trigger_source_int == SyncIn2) {
     // Create a frame observer for this camera
     SP_SET(frame_obs_ptr_, new FrameObserver(vimba_camera_ptr_,
       boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1)));
