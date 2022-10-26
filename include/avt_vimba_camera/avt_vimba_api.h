@@ -111,77 +111,56 @@ class AvtVimbaApi {
 
     VmbUint32_t step = nSize / height;
 
-    // Scale images to fit data type
-    bool scale_to_16_bits = true;
-    int scale_bitshift = 0;
-    //bool scale_images_to_fit_data_type = true;
-    //uint8_t from_bits = 8;
-    //uint8_t to_bits = 8;
-
     // NOTE: YUV and ARGB formats not supported
     std::string encoding;
     if      (pixel_format == VmbPixelFormatMono8          ) encoding = sensor_msgs::image_encodings::MONO8;
-    else if (pixel_format == VmbPixelFormatMono10         ) { encoding = sensor_msgs::image_encodings::MONO16; scale_bitshift = 6; } // from_bits = 10; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatMono12         ) { encoding = sensor_msgs::image_encodings::MONO16; scale_bitshift = 4; } // from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatMono12Packed   ) encoding = "mono12_packed";
-    else if (pixel_format == VmbPixelFormatMono14         ) { encoding = sensor_msgs::image_encodings::MONO16; scale_bitshift = 2; } // from_bits = 14; to_bits = 16; }
+    else if (pixel_format == VmbPixelFormatMono10         ) encoding = sensor_msgs::image_encodings::MONO16;
+    else if (pixel_format == VmbPixelFormatMono12         ) encoding = sensor_msgs::image_encodings::MONO16;
+    else if (pixel_format == VmbPixelFormatMono12Packed   ) encoding = sensor_msgs::image_encodings::MONO16;
+    else if (pixel_format == VmbPixelFormatMono14         ) encoding = sensor_msgs::image_encodings::MONO16;
     else if (pixel_format == VmbPixelFormatMono16         ) encoding = sensor_msgs::image_encodings::MONO16;
     else if (pixel_format == VmbPixelFormatBayerGR8       ) encoding = sensor_msgs::image_encodings::BAYER_GRBG8;
     else if (pixel_format == VmbPixelFormatBayerRG8       ) encoding = sensor_msgs::image_encodings::BAYER_RGGB8;
     else if (pixel_format == VmbPixelFormatBayerGB8       ) encoding = sensor_msgs::image_encodings::BAYER_GBRG8;
     else if (pixel_format == VmbPixelFormatBayerBG8       ) encoding = sensor_msgs::image_encodings::BAYER_BGGR8;
-    else if (pixel_format == VmbPixelFormatBayerGR10      ) { encoding = sensor_msgs::image_encodings::BAYER_GRBG16; scale_bitshift = 6; } // from_bits = 10; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerRG10      ) { encoding = sensor_msgs::image_encodings::BAYER_RGGB16; scale_bitshift = 6; } // from_bits = 10; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerGB10      ) { encoding = sensor_msgs::image_encodings::BAYER_GBRG16; scale_bitshift = 6; } // from_bits = 10; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerBG10      ) { encoding = sensor_msgs::image_encodings::BAYER_BGGR16; scale_bitshift = 6; } // from_bits = 10; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerGR12      ) { encoding = sensor_msgs::image_encodings::BAYER_GRBG16; scale_bitshift = 4; } // from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerRG12      ) { encoding = sensor_msgs::image_encodings::BAYER_RGGB16; scale_bitshift = 4; } // from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerGB12      ) { encoding = sensor_msgs::image_encodings::BAYER_GBRG16; scale_bitshift = 4; } // from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerBG12      ) { encoding = sensor_msgs::image_encodings::BAYER_BGGR16; scale_bitshift = 4; } // from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatBayerGR12Packed) encoding = "bayer_grrg12_packed";
-    else if (pixel_format == VmbPixelFormatBayerRG12Packed) encoding = "bayer_rggb12_packed";
-    else if (pixel_format == VmbPixelFormatBayerGB12Packed) encoding = "bayer_gbrg12_packed";
-    else if (pixel_format == VmbPixelFormatBayerBG12Packed) encoding = "bayer_bggr12_packed";
-    else if (pixel_format == VmbPixelFormatBayerGR16      ) encoding = sensor_msgs::image_encodings::BAYER_GRBG16;
-    else if (pixel_format == VmbPixelFormatBayerRG16      ) encoding = sensor_msgs::image_encodings::BAYER_RGGB16;
-    else if (pixel_format == VmbPixelFormatBayerGB16      ) encoding = sensor_msgs::image_encodings::BAYER_GBRG16;
-    else if (pixel_format == VmbPixelFormatBayerBG16      ) encoding = sensor_msgs::image_encodings::BAYER_BGGR16;
+    else if (pixel_format == VmbPixelFormatBayerGR10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerRG10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerGB10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerBG10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerGR12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    // dcasa: fixed BayerRG8 image encoding
+    else if (pixel_format == VmbPixelFormatBayerRG12      ) encoding = sensor_msgs::image_encodings::BAYER_RGGB16;
+    else if (pixel_format == VmbPixelFormatBayerGB12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerBG12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerGR12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+    else if (pixel_format == VmbPixelFormatBayerRG12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+    else if (pixel_format == VmbPixelFormatBayerGB12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+    else if (pixel_format == VmbPixelFormatBayerBG12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
+    else if (pixel_format == VmbPixelFormatBayerGR16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerRG16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerGB16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    else if (pixel_format == VmbPixelFormatBayerBG16      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
     else if (pixel_format == VmbPixelFormatRgb8           ) encoding = sensor_msgs::image_encodings::RGB8;
     else if (pixel_format == VmbPixelFormatBgr8           ) encoding = sensor_msgs::image_encodings::BGR8;
     else if (pixel_format == VmbPixelFormatRgba8          ) encoding = sensor_msgs::image_encodings::RGBA8;
     else if (pixel_format == VmbPixelFormatBgra8          ) encoding = sensor_msgs::image_encodings::BGRA8;
-    else if (pixel_format == VmbPixelFormatRgb12          ) { encoding = sensor_msgs::image_encodings::RGB16; scale_bitshift = 4; } //from_bits = 12; to_bits = 16; }
-    else if (pixel_format == VmbPixelFormatRgb16          ) encoding = sensor_msgs::image_encodings::RGB16;
+    else if (pixel_format == VmbPixelFormatRgb12          ) encoding = sensor_msgs::image_encodings::TYPE_16UC3;
+    else if (pixel_format == VmbPixelFormatRgb16          ) encoding = sensor_msgs::image_encodings::TYPE_16UC3;
     else
       ROS_WARN("Received frame with unsupported pixel format %d", pixel_format);
     if (encoding == "") return false;
 
-
-
     VmbUchar_t *buffer_ptr;
     VmbErrorType err = vimba_frame_ptr->GetImage(buffer_ptr);
-
     bool res = false;
     if ( VmbErrorSuccess == err ) {
-      // Scale images to fit data type
-      if (scale_to_16_bits && scale_bitshift > 0) {
-        uint16_t* data_;
-        data_ = reinterpret_cast<uint16_t*>(buffer_ptr);
-        for (size_t i=0; i<nSize/2; i++) {
-          data_[i] <<= scale_bitshift;
+      // dcasa: scale 12 bit image to 16 bit container
+      if (pixel_format == VmbPixelFormatBayerRG12) {
+        unsigned short *buffer_ptr_uint16 = (unsigned short *)buffer_ptr;
+        for (unsigned int i=0; i<nSize/2; i++) {
+          buffer_ptr_uint16[i]<<=4;
         }
       }
-      /* if (scale_images_to_fit_data_type && (from_bits != to_bits)) {
-        if (to_bits == 16) {
-          uint16_t* data_;
-          data_ = reinterpret_cast<uint16_t*>(buffer_ptr);
-          for (size_t i=0; i<nSize/2; i++) {
-            data_[i] <<= (to_bits - from_bits);
-          }
-        }
-        // other cases here?
-      } */
-
       res = sensor_msgs::fillImage(image,
                                    encoding,
                                    height,
