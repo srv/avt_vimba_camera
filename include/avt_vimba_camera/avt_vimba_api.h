@@ -128,7 +128,8 @@ class AvtVimbaApi {
     else if (pixel_format == VmbPixelFormatBayerGB10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
     else if (pixel_format == VmbPixelFormatBayerBG10      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
     else if (pixel_format == VmbPixelFormatBayerGR12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
-    else if (pixel_format == VmbPixelFormatBayerRG12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
+    // dcasa: fixed BayerRG8 image encoding
+    else if (pixel_format == VmbPixelFormatBayerRG12      ) encoding = sensor_msgs::image_encodings::BAYER_RGGB16;
     else if (pixel_format == VmbPixelFormatBayerGB12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
     else if (pixel_format == VmbPixelFormatBayerBG12      ) encoding = sensor_msgs::image_encodings::TYPE_16SC1;
     else if (pixel_format == VmbPixelFormatBayerGR12Packed) encoding = sensor_msgs::image_encodings::TYPE_32SC4;
@@ -153,12 +154,20 @@ class AvtVimbaApi {
     VmbErrorType err = vimba_frame_ptr->GetImage(buffer_ptr);
     bool res = false;
     if ( VmbErrorSuccess == err ) {
+      // dcasa: scale 12 bit image to 16 bit container
+      if (pixel_format == VmbPixelFormatBayerRG12) {
+        unsigned short *buffer_ptr_uint16 = (unsigned short *)buffer_ptr;
+        for (unsigned int i=0; i<nSize/2; i++) {
+          buffer_ptr_uint16[i]<<=4;
+        }
+      }
       res = sensor_msgs::fillImage(image,
                                    encoding,
                                    height,
                                    width,
                                    step,
                                    buffer_ptr);
+
     } else {
       ROS_ERROR_STREAM("[" << ros::this_node::getName()
         << "]: Could not GetImage. "

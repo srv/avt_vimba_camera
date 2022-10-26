@@ -59,11 +59,30 @@ static const char* AcquisitionMode[] = {
   "Recorder"};
 static const char* PixelFormatMode[] = {
   "Mono8",
+  "Mono10",
+  "Mono10Packed",
   "Mono12",
   "Mono12Packed",
+  "BayerGR8",
   "BayerRG8",
-  "BayerRG12Packed",
+  "BayerGB8",
+  "BayerBG8",
+  "BayerGR10",
+  "BayerRG10",
+  "BayerGB10",
+  "BayerBG10",
+  "BayerGR12",
   "BayerRG12",
+  "BayerGB12",
+  "BayerBG12",
+  "BayerGR10Packed",
+  "BayerRG10Packed",
+  "BayerGB10Packed",
+  "BayerBG10Packed",
+  "BayerGR12Packed",
+  "BayerRG12Packed",
+  "BayerGB12Packed",
+  "BayerBG12Packed",
   "RGB8Packed",
   "BGR8Packed"};
 static const char* BalanceRatioMode[] = {
@@ -103,8 +122,6 @@ AvtVimbaCamera::AvtVimbaCamera(std::string name) {
   on_init_ = true;   // on initialization phase
   show_debug_prints_ = false;
   name_ = name;
-
-  signal(SIGINT, intHandler);
 
   camera_state_ = OPENING;
 
@@ -173,7 +190,8 @@ void AvtVimbaCamera::start(std::string ip_str, std::string guid_str, bool debug_
 
   if (trigger_source_int == Freerun   ||
       trigger_source_int == FixedRate ||
-      trigger_source_int == SyncIn1) {
+      trigger_source_int == SyncIn1   ||
+      trigger_source_int == SyncIn2) {
     // Create a frame observer for this camera
     SP_SET(frame_obs_ptr_, new FrameObserver(vimba_camera_ptr_,
       boost::bind(&avt_vimba_camera::AvtVimbaCamera::frameCallback, this, _1)));
@@ -290,6 +308,9 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
   CameraPtr camera;
   VimbaSystem& vimba_system(VimbaSystem::GetInstance());
 
+  // set handler to catch ctrl+c presses
+  sighandler_t oldHandler = signal(SIGINT, intHandler);
+
   // get camera
   VmbErrorType err = vimba_system.GetCameraByID(id_str.c_str(), camera);
   while (err != VmbErrorSuccess) {
@@ -321,6 +342,9 @@ CameraPtr AvtVimbaCamera::openCamera(std::string id_str) {
       return camera;
     }
   }
+
+  // set previous handler back
+  signal(SIGINT, oldHandler);
 
   std::string cam_id, cam_name, cam_model, cam_sn, cam_int_id;
   VmbInterfaceType cam_int_type;
@@ -956,17 +980,17 @@ void AvtVimbaCamera::updateGainConfig(Config& config) {
   }
   if (config.gain_auto_outliers != config_.gain_auto_outliers || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoMin",
+    setFeatureValue("GainAutoOutliers",
                     static_cast<VmbInt64_t>(config.gain_auto_outliers));
   }
   if (config.gain_auto_rate != config_.gain_auto_rate || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoOutliers",
+    setFeatureValue("GainAutoRate",
                     static_cast<VmbInt64_t>(config.gain_auto_rate));
   }
   if (config.gain_auto_target != config_.gain_auto_target || on_init_) {
     changed = true;
-    setFeatureValue("GainAutoRate", static_cast<VmbInt64_t>(config.gain_auto_target));
+    setFeatureValue("GainAutoTarget", static_cast<VmbInt64_t>(config.gain_auto_target));
   }
   if(changed && show_debug_prints_){
     ROS_INFO_STREAM("New Gain config (" << config.frame_id << ") : "
