@@ -43,7 +43,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <image_transport/image_transport.h>
 #include <dynamic_reconfigure/server.h>
-
+#include <cav_msgs/SystemAlert.h>
+#include <cav_msgs/DriverStatus.h>
 #include <string>
 
 namespace avt_vimba_camera {
@@ -51,11 +52,13 @@ class MonoCamera {
  public:
   MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp);
   ~MonoCamera(void);
+  void updateCameraStatus();
+  uint8_t cam_status;
+  private:
 
- private:
   AvtVimbaApi api_;
   AvtVimbaCamera cam_;
-
+  ros::Time last_time_;
   // diagnostic_updater::Updater updater_;
   // diagnostic_updater::TopicDiagnostic* pub_freq_;
 
@@ -70,8 +73,6 @@ class MonoCamera {
   image_transport::ImageTransport it_;
   // ROS Camera publisher
   image_transport::CameraPublisher pub_;
-
-
 
   // sensor_msgs::CameraInfo left_info_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> info_man_;

@@ -31,7 +31,6 @@
 /// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <avt_vimba_camera/mono_camera.h>
-
 #define DEBUG_PRINTS 1
 
 namespace avt_vimba_camera {
@@ -39,7 +38,6 @@ namespace avt_vimba_camera {
 MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp_(nhp), it_(nhp), cam_(ros::this_node::getName()) {
   // Prepare node handle for the camera
   // TODO use nodelets with getMTNodeHandle()
-
   // Start Vimba & list all available cameras
   api_.start();
 
@@ -47,6 +45,7 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
   pub_  = it_.advertiseCamera("image_raw",  1);
 
   // Set the frame callback
+  
   cam_.setCallback(boost::bind(&avt_vimba_camera::MonoCamera::frameCallback, this, _1));
 
   // Set the params
@@ -67,9 +66,11 @@ MonoCamera::MonoCamera(ros::NodeHandle& nh, ros::NodeHandle& nhp) : nh_(nh), nhp
 MonoCamera::~MonoCamera(void) {
   cam_.stop();
   pub_.shutdown();
-}
+  }
 
 void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
+   cam_status=cav_msgs::DriverStatus::OPERATIONAL;
+   last_time_=ros::Time::now();
   ros::Time ros_time = ros::Time::now();
   if (pub_.getNumSubscribers() > 0) {
     sensor_msgs::Image img;
@@ -78,8 +79,10 @@ void MonoCamera::frameCallback(const FramePtr& vimba_frame_ptr) {
       ci.header.stamp = img.header.stamp = ros_time;
       img.header.frame_id = ci.header.frame_id;
       pub_.publish(img, ci);
+
     } else {
       ROS_WARN_STREAM("Function frameToImage returned 0. No image published.");
+      cam_status=cav_msgs::DriverStatus::FAULT;
     }
   }
   // updater_.update();
@@ -162,4 +165,18 @@ void MonoCamera::updateCameraInfo(const avt_vimba_camera::AvtVimbaCameraConfig& 
   info_man_->setCameraInfo(ci);
 }
 
+//time_compare compares the system time with time stamp and if its greater than 3 sec it assigns OFF status
+void MonoCamera::updateCameraStatus()
+{
+    ros::Duration img_time_difference=ros::Time::now()-last_time_;
+    //Greater than 2 seconds of non-response is the minimum time required to classify as not connected
+  if ((img_time_difference>ros::Duration(2.0)) && cam_status==cav_msgs::DriverStatus::OPERATIONAL)
+    {
+    cam_status=cav_msgs::DriverStatus::OFF;
+    }
+}
 };
+
+
+
+
